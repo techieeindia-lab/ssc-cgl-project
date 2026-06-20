@@ -29,6 +29,7 @@ async function saveUserToFirestore(uid: string, data: {
         streak: 0,
         totalTests: 0,
         bestScore: 0,
+        isPremium: false,
         createdAt: serverTimestamp(),
       });
       console.log('✅ User saved to Firestore!');

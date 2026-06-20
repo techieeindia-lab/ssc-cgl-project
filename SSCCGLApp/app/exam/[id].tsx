@@ -7,9 +7,10 @@ import {
   Alert, Modal, ActivityIndicator, BackHandler, StatusBar, Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { getMockTestQuestions, getQuestionsBySection, getQuestionsByPaper } from '../../src/services/questionService';
+import { getMockTestQuestions, getQuestionsBySection, getQuestionsByPaper, QuestionResult } from '../../src/services/questionService';
 import { saveTestResult } from '../../src/services/testService';
 import { awardExamCoins, ExamReward } from '../../src/services/coinService';
+import { recordMistake, MistakeSource } from '../../src/services/mistakeService';
 import { useAuth } from '../../src/context/AuthContext';
 import ConfirmModal from '../../src/components/common/ConfirmModal';
 
@@ -67,7 +68,7 @@ type ConfirmData = {
 // MAIN EXPORT
 // ════════════════════════════════════════════════
 export default function ExamScreen() {
-  const { id }   = useLocalSearchParams<{ id: string }>();
+  const { id, sourceMock } = useLocalSearchParams<{ id: string; sourceMock?: string }>();
   const router   = useRouter();
   const { user } = useAuth();
 
@@ -186,29 +187,56 @@ export default function ExamScreen() {
       const isSectional = ['QA', 'GIR', 'GA', 'EN'].includes(id || '');
       const isPyq = (id || '').startsWith('pyq_');
 
+      // Helper: turn a QuestionResult into either a list of questions, or a
+      // user-facing alert + null (caller falls through to the next loader).
+      const resolve = (res: QuestionResult, label: string): any[] | null => {
+        if (res.ok) return res.questions;
+        if (res.error === 'empty') {
+          // Don't alert here — empty is a state the caller will likely
+          // fall through to a fallback (e.g. mock_test_01 → quiz pool).
+          return null;
+        }
+        Alert.alert(
+          'Could not load questions',
+          `Failed to fetch ${label}. ${res.message ?? 'Check your connection and try again.'}`,
+          [{ text: 'OK', onPress: () => router.back() }],
+        );
+        return null;
+      };
+
       if (isPyst) {
-        const section = (id || '').split('_')[1] || 'QA';
-        // Previous Year Sectional Test fetches questions for that section
-        const allSecQs = await getQuestionsBySection(section as any, 50); // Fetch more to select PYQs
-        all = allSecQs.filter((q: any) => q.year !== null).slice(0, 25);
-        if (all.length < 25) {
-          all = allSecQs.slice(0, 25);
-        }
+        const r = resolve(await getQuestionsByPaper(id), id);
+        if (r) all = r;
       } else if (isSectional) {
-        // Fetch exactly 15 questions for this specific section
-        all = await getQuestionsBySection(id as any, 15, 'mock');
+        // Fetch sectional mock questions from the chosen mock test (or
+        // the legacy `mock_test_01` default when none is supplied).
+        const mockSource = sourceMock || 'mock_test_01';
+        const r = resolve(await getQuestionsByPaper(mockSource, id as any), `${id} sectional`);
+        if (r) all = r;
+        // Empty default mock → fall back to the per-section quiz pool.
+        if (!r) all = await getQuestionsBySection(id as any, 15);
       } else if (isPyq) {
-        // Fetch questions for this specific shift paper
-        all = await getQuestionsByPaper(id);
-        if (all.length === 0) {
-          all = await getMockTestQuestions();
-        }
+        const r = resolve(await getQuestionsByPaper(id), id);
+        if (r) all = r;
       } else {
         // Full Mock Test
-        all = await getQuestionsByPaper(id);
-        if (all.length === 0) {
+        const r = resolve(await getQuestionsByPaper(id), id);
+        if (r) {
+          all = r;
+        } else {
+          // Empty mock → use the per-section pool fallback.
           all = await getMockTestQuestions();
         }
+      }
+
+      if (all.length === 0) {
+        Alert.alert(
+          'No questions found',
+          `No questions are available for "${id}". Ask an admin to seed this paper.`,
+          [{ text: 'OK', onPress: () => router.back() }],
+        );
+        setLoading(false);
+        return;
       }
 
       const byS: Record<string, any[]> = {};
@@ -270,6 +298,31 @@ export default function ExamScreen() {
     };
   };
 
+  // Map an exam id to a MistakeSource tag.
+  const sourceFor = (examId: string): MistakeSource => {
+    if (examId === 'full') return 'mock';
+    if (examId.startsWith('pyst_')) return 'pyst';
+    if (examId.startsWith('pyq_')) return 'pyq';
+    if (['QA', 'GIR', 'GA', 'EN'].includes(examId)) return 'sectional';
+    return 'mock';
+  };
+
+  // Persist every wrong answer in this section to the user's mistakes
+  // collection. Fire-and-forget — failures are logged, never surfaced.
+  const persistMistakesForSection = (sec: string) => {
+    if (!user) return;
+    const qs = qBySecRef.current[sec] || [];
+    const source = sourceFor(id || '');
+    qs.forEach((q: any) => {
+      const a = answersRef.current[q.id];
+      if (a === null || a === undefined) return;
+      if (a === q.correct) return;
+      recordMistake(user.uid, q, source, id || null).catch((e) =>
+        console.warn('recordMistake failed', e),
+      );
+    });
+  };
+
   // ════════════════════════════════════════════════
   // SUBMIT LOGIC
   // ════════════════════════════════════════════════
@@ -329,6 +382,9 @@ export default function ExamScreen() {
     secResultsRef.current = newResults;
     setSecResults({ ...newResults });
     setDoneSecs((prev) => [...prev, sec]);
+
+    // Persist this section's wrong answers before moving on.
+    persistMistakesForSection(sec);
 
     const nextIdx = sectionsList.indexOf(sec) + 1;
 

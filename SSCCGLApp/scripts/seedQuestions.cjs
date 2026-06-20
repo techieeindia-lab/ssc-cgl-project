@@ -127,7 +127,7 @@ const questions = [
 async function seedQuestions() {
   console.log(`\n🚀 Starting seed: ${questions.length} questions...\n`);
 
-  const existingSnap = await db.collection('questions').limit(1).get();
+  const existingSnap = await db.collection('quiz_questions').limit(1).get();
   if (!existingSnap.empty) {
     console.log('⚠️  Questions already exist in Firestore!');
     const args = process.argv.slice(2);
@@ -146,7 +146,7 @@ async function seedQuestions() {
     const batch = db.batch();
 
     chunk.forEach((q) => {
-      const docRef = db.collection('questions').doc();
+      const docRef = db.collection('quiz_questions').doc();
       batch.set(docRef, {
         ...q,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),

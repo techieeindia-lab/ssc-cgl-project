@@ -8,6 +8,8 @@ import { useAuth } from '../../src/context/AuthContext';
 import { getUserStats, getLevelFromXP, UserStats } from '../../src/services/coinService';
 import { getTestHistory } from '../../src/services/testService';
 import { SECTIONS } from '../../src/constants/examConfig';
+import { computeSectionMastery, SectionMastery } from '../../src/services/analyticsService';
+import { getMistakesCount } from '../../src/services/mistakeService';
 
 type RecentTest = {
   id: string;
@@ -26,6 +28,8 @@ export default function ProgressScreen() {
   const { user } = useAuth();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recent, setRecent] = useState<RecentTest[]>([]);
+  const [mastery, setMastery] = useState<SectionMastery[] | null>(null);
+  const [mistakesCount, setMistakesCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -33,6 +37,8 @@ export default function ProgressScreen() {
       if (!user) {
         setStats(null);
         setRecent([]);
+        setMastery(null);
+        setMistakesCount(0);
         setLoading(false);
         return;
       }
@@ -40,13 +46,17 @@ export default function ProgressScreen() {
       (async () => {
         setLoading(true);
         try {
-          const [s, h] = await Promise.all([
+          const [s, h, m, mc] = await Promise.all([
             getUserStats(user.uid),
             getTestHistory(user.uid, 5),
+            computeSectionMastery(user.uid),
+            getMistakesCount(user.uid),
           ]);
           if (!cancelled) {
             setStats(s);
             setRecent(h as RecentTest[]);
+            setMastery(m.bySection);
+            setMistakesCount(mc);
           }
         } catch (e) {
           console.error('progress load error', e);
@@ -134,26 +144,47 @@ export default function ProgressScreen() {
           )}
         </View>
 
-        {/* Section mastery (placeholder bars until Phase 3 builds real analytics) */}
-        <Text style={styles.sectionTitle}>Section Mastery</Text>
+        {/* Section mastery — real per-section accuracy from analyticsService */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Section Mastery</Text>
+          {mistakesCount > 0 && (
+            <TouchableOpacity
+              style={styles.reviseBadge}
+              onPress={() => router.push('/quiz/revision')}
+            >
+              <Text style={styles.reviseBadgeTxt}>🔁 {mistakesCount} to revise</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.sectionList}>
-          {SECTIONS.map((s) => (
-            <View key={s.id} style={[styles.sectionCard, { borderLeftColor: s.color }]}>
-              <Text style={styles.secEmoji}>{s.icon}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.secName}>{s.shortName}</Text>
-                <View style={styles.secBar}>
-                  <View style={[styles.secBarFill, { backgroundColor: s.color }]} />
+          {SECTIONS.map((s) => {
+            const m = mastery?.find((x) => x.section === s.id);
+            const pct = m && m.attempted > 0 ? m.accuracy : null;
+            return (
+              <View key={s.id} style={[styles.sectionCard, { borderLeftColor: s.color }]}>
+                <Text style={styles.secEmoji}>{s.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.secName}>{s.shortName}</Text>
+                  <View style={styles.secBar}>
+                    <View
+                      style={[
+                        styles.secBarFill,
+                        { backgroundColor: s.color, width: pct === null ? '0%' : `${pct}%` },
+                      ]}
+                    />
+                  </View>
                 </View>
+                <Text style={[styles.secPct, { color: s.color }]}>
+                  {pct === null ? '—' : `${pct}%`}
+                </Text>
               </View>
-              <Text style={[styles.secPct, { color: s.color }]}>
-                {testsTaken === 0 ? '—' : 'TBD'}
-              </Text>
-            </View>
-          ))}
-          <Text style={styles.sectionHint}>
-            Take a few tests to unlock section-wise accuracy breakdowns.
-          </Text>
+            );
+          })}
+          {!mastery || mastery.every((m) => m.attempted === 0) ? (
+            <Text style={styles.sectionHint}>
+              Take a few tests to unlock section-wise accuracy breakdowns.
+            </Text>
+          ) : null}
         </View>
 
         {/* Recent tests */}
@@ -281,10 +312,21 @@ const styles = StyleSheet.create({
   barLbl: { fontSize: 10, color: COLORS.text_muted, marginTop: 6, textAlign: 'right' },
 
   // Section mastery
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', paddingRight: 20,
+  },
   sectionTitle: {
     fontSize: 15, fontWeight: '800', color: COLORS.text_primary,
     paddingHorizontal: 20, marginBottom: 12,
   },
+  reviseBadge: {
+    backgroundColor: '#F39C1222', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#F39C12',
+    marginRight: 20, marginBottom: 12,
+  },
+  reviseBadgeTxt: { color: '#F39C12', fontSize: 11, fontWeight: '800' },
   sectionList: { paddingHorizontal: 20, marginBottom: 24, gap: 8 },
   sectionCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

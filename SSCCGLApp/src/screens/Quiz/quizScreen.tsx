@@ -12,6 +12,7 @@ import {
   getMixQuizQuestions, getSubjectQuizQuestions, getTopicQuizQuestions,
 } from '../../services/questionService';
 import { awardQuizCoins, getUserStats } from '../../services/coinService';
+import { recordMistake } from '../../services/mistakeService';
 import { useAuth } from '../../context/AuthContext';
 
 type OptionState = 'default' | 'correct' | 'wrong';
@@ -104,6 +105,12 @@ export default function QuizScreen() {
       correct: isCorrect ? prev.correct + 1 : prev.correct,
       wrong: !isCorrect ? prev.wrong + 1 : prev.wrong,
     }));
+    // Persist the wrong answer to the user's mistake collection (fire-and-forget).
+    if (!isCorrect && user) {
+      recordMistake(user.uid, q, 'quiz').catch((e) =>
+        console.warn('recordMistake failed', e),
+      );
+    }
     await playSound(isCorrect);
   };
 

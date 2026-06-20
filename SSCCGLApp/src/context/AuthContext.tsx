@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { clearPremiumCache } from '../services/studyService';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      // Clear the per-user premium cache when the user changes.
+      clearPremiumCache(firebaseUser?.uid);
       setUser(firebaseUser);
       setLoading(false);
     });

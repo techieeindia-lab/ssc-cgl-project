@@ -4,7 +4,7 @@ import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, Alert, ActivityIndicator, TextInput, Clipboard
 } from 'react-native';
-import { collection, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, writeBatch, doc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../src/services/firebase';
 import { COLORS } from '../../src/theme/colors';
 
@@ -100,13 +100,57 @@ export default function SeedScreen() {
       const BATCH_SIZE = 400;
       let uploaded = 0;
 
+      // If mock or pyq, verify and ensure parent document exists (simple write metadata)
+      if (selectedType === 'mock') {
+        const parentRef = doc(db, 'mock_tests', paperId.trim());
+        const parentSnap = await getDoc(parentRef);
+        if (!parentSnap.exists()) {
+          addLog(`📝 Creating parent mock test metadata document for "${paperId.trim()}"...`);
+          await setDoc(parentRef, {
+            id: paperId.trim(),
+            title: `Mock Test - ${paperId.trim().toUpperCase()}`,
+            duration: 3600,
+            totalQuestions: questions.length,
+            isActive: true,
+            createdAt: serverTimestamp(),
+          });
+        }
+      } else if (selectedType === 'pyq') {
+        const parentRef = doc(db, 'pyq_papers', paperId.trim());
+        const parentSnap = await getDoc(parentRef);
+        if (!parentSnap.exists()) {
+          addLog(`📝 Creating parent PYQ paper metadata document for "${paperId.trim()}"...`);
+          // Extract year/shift if format is e.g. pyq_2024_s1
+          const parts = paperId.trim().split('_');
+          const year = parseInt(parts[1] || '2024', 10);
+          const shift = parseInt((parts[2] || 's1').replace('s', ''), 10);
+          await setDoc(parentRef, {
+            id: paperId.trim(),
+            title: `CGL ${year} (Shift ${shift})`,
+            year: isNaN(year) ? 2024 : year,
+            shift: isNaN(shift) ? 1 : shift,
+            date: new Date().toISOString().split('T')[0],
+            totalQuestions: questions.length,
+            createdAt: serverTimestamp(),
+          });
+        }
+      }
+
       for (let i = 0; i < questions.length; i += BATCH_SIZE) {
         const chunk = questions.slice(i, i + BATCH_SIZE);
         const batch = writeBatch(db);
 
-        chunk.forEach((q) => {
-          const ref = doc(collection(db, 'questions'));
-          batch.set(ref, {
+        chunk.forEach((q, idx) => {
+          let ref;
+          if (selectedType === 'quiz') {
+            ref = doc(collection(db, 'quiz_questions'));
+          } else if (selectedType === 'mock') {
+            ref = doc(collection(db, 'mock_tests', paperId.trim(), 'questions'));
+          } else {
+            ref = doc(collection(db, 'pyq_papers', paperId.trim(), 'questions'));
+          }
+
+          const qData: any = {
             text: q.text || '',
             options: Array.isArray(q.options) ? q.options : [],
             correct: typeof q.correct === 'number' ? q.correct : 0,
@@ -115,13 +159,17 @@ export default function SeedScreen() {
             tags: Array.isArray(q.tags) ? q.tags : [],
             year: typeof q.year === 'number' ? q.year : null,
             explanation: q.explanation || '',
-            paperId: (selectedType === 'mock' || selectedType === 'pyq') ? paperId.trim() : (q.paperId || null),
-            type: selectedType,
             questionImg: q.questionImg || null,
             optionImgs: Array.isArray(q.optionImgs) ? q.optionImgs : null,
             explanationImg: q.explanationImg || null,
             createdAt: serverTimestamp(),
-          });
+          };
+
+          if (selectedType === 'mock' || selectedType === 'pyq') {
+            qData.qNumber = typeof q.qNumber === 'number' ? q.qNumber : (i + idx + 1);
+          }
+
+          batch.set(ref, qData);
         });
 
         await batch.commit();

@@ -1,7 +1,8 @@
 // app/quiz/revision.tsx
-// "Revise your mistakes" — pulls all questions the user got wrong across
-// past tests and quizzes them again. Falls back to a mix quiz if there
-// are no recorded wrong answers yet.
+// "Revise your mistakes" — pulls the user's most recent unresolved
+// mistakes from `users/{uid}/mistakes` and quizzes them again. After the
+// session, any question the user got right is marked `resolved: true`
+// so it won't appear in future revision rounds.
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -11,10 +12,9 @@ import {
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
 import { Question } from '../../src/services/questionService';
-import { getMixQuizQuestions } from '../../src/services/questionService';
 import { useAuth } from '../../src/context/AuthContext';
-import { awardQuizCoins } from '../../src/services/coinService';
-import { getUserStats } from '../../src/services/coinService';
+import { awardQuizCoins, getUserStats } from '../../src/services/coinService';
+import { getRevisionQuestions, markResolved } from '../../src/services/mistakeService';
 
 export default function RevisionQuizScreen() {
   const router = useRouter();
@@ -27,14 +27,19 @@ export default function RevisionQuizScreen() {
   const [loading, setLoading] = useState(true);
   const [reward, setReward] = useState<{ coins: number; xp: number } | null>(null);
   const [done, setDone] = useState(false);
+  // Track question IDs the user got right in this session, so we can mark
+  // them `resolved: true` when the session ends.
+  const [gotRight, setGotRight] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
       try {
-        // For now revision = a curated mix; once we store wrong-answer
-        // bookmarks per user (Phase 4), swap this for that query.
-        const qs = await getMixQuizQuestions(10);
-        setQuestions(qs);
+        if (user) {
+          const qs = await getRevisionQuestions(user.uid, 10);
+          setQuestions(qs);
+        } else {
+          setQuestions([]);
+        }
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
@@ -47,6 +52,13 @@ export default function RevisionQuizScreen() {
     const q = questions[idx];
     const ok = i === q.correct;
     setScore((s) => ({ correct: s.correct + (ok ? 1 : 0), wrong: s.wrong + (ok ? 0 : 1) }));
+    if (ok) {
+      setGotRight((prev) => {
+        const next = new Set(prev);
+        next.add(q.id);
+        return next;
+      });
+    }
   };
 
   const handleNext = async () => {
@@ -54,6 +66,9 @@ export default function RevisionQuizScreen() {
       setDone(true);
       if (user) {
         try {
+          // Mark the questions the user got right this round as resolved.
+          gotRight.forEach((qid) => markResolved(user.uid, qid));
+
           const stats = await getUserStats(user.uid);
           const today = new Date().toISOString().split('T')[0];
           const isStreakDay = stats.lastQuizDate !== today;
@@ -81,8 +96,14 @@ export default function RevisionQuizScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyEmoji}>📭</Text>
-        <Text style={styles.emptyTxt}>No revision questions yet.</Text>
-        <Text style={styles.emptySub}>Take a quiz or mock test to start tracking mistakes.</Text>
+        <Text style={styles.emptyTxt}>
+          {user ? 'No revision questions yet.' : 'Sign in to track your mistakes.'}
+        </Text>
+        <Text style={styles.emptySub}>
+          {user
+            ? 'Take a quiz or mock test to start tracking mistakes.'
+            : 'We can only show your previously-wrong questions once you sign in.'}
+        </Text>
         <TouchableOpacity style={styles.btn} onPress={() => router.back()}>
           <Text style={styles.btnTxt}>Go Back</Text>
         </TouchableOpacity>

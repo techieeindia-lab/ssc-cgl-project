@@ -2,18 +2,33 @@
 // Tap-to-flip flashcard deck. Cycles through flashcards one at a time
 // with Previous/Next and a progress indicator.
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, ActivityIndicator,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
-import { getFlashcards, Flashcard } from '../../data/studyContent';
+import { Flashcard } from '../../data/studyContent';
+import { fetchFlashcards } from '../../services/studyService';
 
 export default function FlashcardsView({ section, tag }: { section: string; tag: string }) {
-  const cards: Flashcard[] = getFlashcards(section, tag);
+  const [cards, setCards] = useState<Flashcard[] | null>(null);
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchFlashcards(section, tag).then((c) => { if (!cancelled) setCards(c); });
+    return () => { cancelled = true; };
+  }, [section, tag]);
+
+  if (cards === null) {
+    return (
+      <View style={styles.empty}>
+        <ActivityIndicator color={COLORS.accent} size="large" />
+      </View>
+    );
+  }
 
   if (cards.length === 0) {
     return (

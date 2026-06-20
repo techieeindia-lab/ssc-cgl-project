@@ -1,5 +1,4 @@
 // src/services/questionService.ts
-// ── FULL REPLACEMENT — adds getQuizQuestions & getTopicWiseQuestions ──
 import {
   collection, query, where, getDocs, orderBy, limit, DocumentData,
 } from 'firebase/firestore';
@@ -18,7 +17,7 @@ export type Question = {
   difficulty: 'easy' | 'medium' | 'hard';
   tags: string[];
   paperId?: string | null;
-  
+
   // Image properties
   questionImg?: string | null;
   optionImgs?: (string | null)[] | null;
@@ -28,73 +27,198 @@ export type Question = {
   type?: 'quiz' | 'mock' | 'pyq' | null;
 };
 
+/**
+ * Typed result for paper-level loaders. Used by app/exam/[id].tsx to
+ * distinguish an empty paper (show "no questions") from a Firestore error
+ * (show "retry"). The quiz helpers continue to return Question[] directly
+ * since a missing quiz falls through to the static-content screens.
+ */
+export type QuestionResult =
+  | { ok: true; questions: Question[] }
+  | { ok: false; error: 'empty' | 'firestore'; message?: string };
+
 const toQuestion = (doc: DocumentData): Question => ({
   id: doc.id,
   ...doc.data(),
 });
 
-// ── existing helpers (unchanged) ─────────────────────────────────────────────
+// ── Subcollection query helpers ──────────────────────────────────────────
 
-export const getMockTestQuestions = async (): Promise<Question[]> => {
+/**
+ * Fetch questions for a specific mock test from /mock_tests/{testId}/questions.
+ * Returns a QuestionResult so callers can distinguish empty from error.
+ */
+export const getQuestionsByMockTest = async (testId: string): Promise<QuestionResult> => {
+  try {
+    const q = query(collection(db, 'mock_tests', testId, 'questions'), orderBy('qNumber', 'asc'));
+    const snap = await getDocs(q);
+    if (snap.empty) return { ok: false, error: 'empty' };
+    return { ok: true, questions: snap.docs.map(toQuestion) };
+  } catch (e: any) {
+    console.error('getQuestionsByMockTest failed', e);
+    return { ok: false, error: 'firestore', message: e?.message };
+  }
+};
+
+/**
+ * Fetch questions for a specific PYQ paper from /pyq_papers/{paperId}/questions.
+ */
+export const getQuestionsByPyqPaper = async (paperId: string): Promise<QuestionResult> => {
+  try {
+    const q = query(collection(db, 'pyq_papers', paperId, 'questions'), orderBy('qNumber', 'asc'));
+    const snap = await getDocs(q);
+    if (snap.empty) return { ok: false, error: 'empty' };
+    return { ok: true, questions: snap.docs.map(toQuestion) };
+  } catch (e: any) {
+    console.error('getQuestionsByPyqPaper failed', e);
+    return { ok: false, error: 'firestore', message: e?.message };
+  }
+};
+
+// ── Existing helpers updated for isolated collections ───────────────────
+
+/**
+ * Full mock-test loader. Tries the subcollection first; on empty/error,
+ * falls back to per-section queries against quiz_questions as a pool.
+ */
+export const getMockTestQuestions = async (
+  testId = 'mock_test_01',
+): Promise<Question[]> => {
+  const sub = await getQuestionsByMockTest(testId);
+  if (sub.ok) return sub.questions;
+
+  // Fallback to per-section queries (using quiz_questions as pool)
   const sections: Section[] = ['QA', 'GIR', 'GA', 'EN'];
   const all: Question[] = [];
-  
-  // Attempt to query mock questions
   for (const section of sections) {
     const q = query(
-      collection(db, 'questions'),
-      where('type', '==', 'mock'),
+      collection(db, 'quiz_questions'),
       where('section', '==', section),
-      limit(25)
+      limit(25),
     );
     const snap = await getDocs(q);
     snap.forEach((doc) => all.push(toQuestion(doc)));
   }
-
-  // Fallback to any questions of these sections if no 'mock' type questions exist
-  if (all.length === 0) {
-    for (const section of sections) {
-      const q = query(collection(db, 'questions'), where('section', '==', section), limit(25));
-      const snap = await getDocs(q);
-      snap.forEach((doc) => all.push(toQuestion(doc)));
-    }
-  }
   return all;
 };
 
+/**
+ * Section-scoped loader. Supports subcollection paths for mock/pyq when
+ * both `type` and `testOrPaperId` are supplied; otherwise falls back to
+ * quiz_questions. Returns Question[] (legacy contract for quiz screens).
+ */
 export const getQuestionsBySection = async (
-  section: Section, count = 25, type?: 'quiz' | 'mock' | 'pyq'
+  section: Section,
+  count = 25,
+  type?: 'quiz' | 'mock' | 'pyq',
+  testOrPaperId?: string,
 ): Promise<Question[]> => {
-  const constraints: any[] = [where('section', '==', section)];
-  if (type) {
-    constraints.push(where('type', '==', type));
+  if (type === 'mock' && testOrPaperId) {
+    try {
+      const q = query(
+        collection(db, 'mock_tests', testOrPaperId, 'questions'),
+        where('section', '==', section),
+        limit(count),
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) return snap.docs.map(toQuestion);
+    } catch (e) {
+      console.error('getQuestionsBySection(mock) failed', e);
+    }
+  } else if (type === 'pyq' && testOrPaperId) {
+    try {
+      const q = query(
+        collection(db, 'pyq_papers', testOrPaperId, 'questions'),
+        where('section', '==', section),
+        limit(count),
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) return snap.docs.map(toQuestion);
+    } catch (e) {
+      console.error('getQuestionsBySection(pyq) failed', e);
+    }
   }
-  const q = query(collection(db, 'questions'), ...constraints, limit(count));
-  const snap = await getDocs(q);
 
-  if (snap.empty && type) {
-    // Fallback without type check
-    const fallbackQ = query(collection(db, 'questions'), where('section', '==', section), limit(count));
-    const fallbackSnap = await getDocs(fallbackQ);
-    return fallbackSnap.docs.map(toQuestion);
-  }
+  const q = query(
+    collection(db, 'quiz_questions'),
+    where('section', '==', section),
+    limit(count),
+  );
+  const snap = await getDocs(q);
   return snap.docs.map(toQuestion);
 };
 
+/**
+ * Paper loader used by app/exam/[id].tsx. Auto-detects PYQ vs mock from
+ * the paperId prefix. Returns QuestionResult so the exam screen can show
+ * a useful error on empty/firestore failures.
+ *
+ * Naming conventions:
+ *   `pyq_<year>_<shift>`     → /pyq_papers/pyq_<year>_<shift>/questions
+ *   `pyst_<section>_<yr>_<sh>` → /pyq_papers/pyq_<yr>_<sh>/questions (filtered by section)
+ *   `full`                   → /mock_tests/mock_test_01/questions (legacy default)
+ *   anything else            → /mock_tests/<id>/questions
+ */
 export const getQuestionsByPaper = async (
-  paperId: string, section?: Section,
-): Promise<Question[]> => {
-  const constraints: any[] = [where('paperId', '==', paperId)];
-  if (section) constraints.push(where('section', '==', section));
-  const q = query(collection(db, 'questions'), ...constraints);
-  const snap = await getDocs(q);
-  return snap.docs.map(toQuestion);
+  paperId: string,
+  section?: Section,
+): Promise<QuestionResult> => {
+  const isPyq = paperId.startsWith('pyq_') || paperId.startsWith('pyst_');
+
+  let actualPaperId = paperId;
+  let actualSection = section;
+
+  if (paperId.startsWith('pyst_')) {
+    // pyst_QA_2023_s1 → pyq_2023_s1, section=QA
+    const parts = paperId.split('_'); // ["pyst", "QA", "2023", "s1"]
+    const sec = parts[1] as Section;
+    const year = parts[2];
+    const shift = parts[3];
+    actualPaperId = `pyq_${year}_${shift}`;
+    actualSection = sec;
+  }
+
+  try {
+    if (isPyq) {
+      if (actualSection) {
+        const q = query(
+          collection(db, 'pyq_papers', actualPaperId, 'questions'),
+          where('section', '==', actualSection),
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) return { ok: false, error: 'empty' };
+        return { ok: true, questions: snap.docs.map(toQuestion) };
+      }
+      return await getQuestionsByPyqPaper(actualPaperId);
+    }
+
+    // Mock test
+    const testId = paperId === 'full' ? 'mock_test_01' : paperId;
+    if (actualSection) {
+      const q = query(
+        collection(db, 'mock_tests', testId, 'questions'),
+        where('section', '==', actualSection),
+      );
+      const snap = await getDocs(q);
+      if (snap.empty) return { ok: false, error: 'empty' };
+      return { ok: true, questions: snap.docs.map(toQuestion) };
+    }
+    return await getQuestionsByMockTest(testId);
+  } catch (e: any) {
+    console.error('getQuestionsByPaper failed', e);
+    return { ok: false, error: 'firestore', message: e?.message };
+  }
 };
 
 export const getQuestionsByDifficulty = async (
-  difficulty: 'easy' | 'medium' | 'hard', count = 10,
+  difficulty: 'easy' | 'medium' | 'hard',
+  count = 10,
 ): Promise<Question[]> => {
-  const q = query(collection(db, 'questions'), where('difficulty', '==', difficulty), limit(count));
+  const q = query(
+    collection(db, 'quiz_questions'),
+    where('difficulty', '==', difficulty),
+    limit(count),
+  );
   const snap = await getDocs(q);
   return snap.docs.map(toQuestion);
 };
@@ -104,104 +228,58 @@ export const getDailyQuizQuestions = async (): Promise<Question[]> => {
   const all: Question[] = [];
   for (const section of sections) {
     const q = query(
-      collection(db, 'questions'),
-      where('type', '==', 'quiz'),
+      collection(db, 'quiz_questions'),
       where('section', '==', section),
-      limit(5)
+      limit(3),
     );
     const snap = await getDocs(q);
     snap.forEach((doc) => all.push(toQuestion(doc)));
   }
-
-  // Fallback if no quiz questions exist
-  if (all.length === 0) {
-    for (const section of sections) {
-      const q = query(collection(db, 'questions'), where('section', '==', section), limit(3));
-      const snap = await getDocs(q);
-      snap.forEach((doc) => all.push(toQuestion(doc)));
-    }
-  }
   return all.sort(() => Math.random() - 0.5).slice(0, 10);
 };
 
-// ── NEW: Quiz helpers ─────────────────────────────────────────────────────────
+// ── Quiz helpers (use quiz_questions) ───────────────────────────────────
 
-/**
- * Mix Quiz — random questions from all sections
- * @param count number of questions (default 10)
- */
 export const getMixQuizQuestions = async (count = 10): Promise<Question[]> => {
   const sections: Section[] = ['QA', 'GIR', 'GA', 'EN'];
   const all: Question[] = [];
   const perSection = Math.ceil(count / sections.length);
   for (const section of sections) {
     const q = query(
-      collection(db, 'questions'),
-      where('type', '==', 'quiz'),
+      collection(db, 'quiz_questions'),
       where('section', '==', section),
-      limit(perSection + 5)
+      limit(perSection + 5),
     );
     const snap = await getDocs(q);
     snap.forEach((doc) => all.push(toQuestion(doc)));
   }
-
-  // Fallback
-  if (all.length === 0) {
-    for (const section of sections) {
-      const q = query(collection(db, 'questions'), where('section', '==', section), limit(perSection + 5));
-      const snap = await getDocs(q);
-      snap.forEach((doc) => all.push(toQuestion(doc)));
-    }
-  }
   return all.sort(() => Math.random() - 0.5).slice(0, count);
 };
 
-/**
- * Subject-wise Quiz — all questions from one section
- */
 export const getSubjectQuizQuestions = async (
-  section: Section, count = 10,
+  section: Section,
+  count = 10,
 ): Promise<Question[]> => {
   const q = query(
-    collection(db, 'questions'),
-    where('type', '==', 'quiz'),
+    collection(db, 'quiz_questions'),
     where('section', '==', section),
     limit(count + 10),
   );
   const snap = await getDocs(q);
-
-  if (snap.empty) {
-    const fallbackQ = query(collection(db, 'questions'), where('section', '==', section), limit(count + 10));
-    const fallbackSnap = await getDocs(fallbackQ);
-    return fallbackSnap.docs.map(toQuestion).sort(() => Math.random() - 0.5).slice(0, count);
-  }
   return snap.docs.map(toQuestion).sort(() => Math.random() - 0.5).slice(0, count);
 };
 
-/**
- * Topic-wise Quiz — filtered by tag
- */
 export const getTopicQuizQuestions = async (
-  section: Section, tag: string, count = 10,
+  section: Section,
+  tag: string,
+  count = 10,
 ): Promise<Question[]> => {
   const q = query(
-    collection(db, 'questions'),
-    where('type', '==', 'quiz'),
+    collection(db, 'quiz_questions'),
     where('section', '==', section),
     where('tags', 'array-contains', tag),
     limit(count),
   );
   const snap = await getDocs(q);
-
-  if (snap.empty) {
-    const fallbackQ = query(
-      collection(db, 'questions'),
-      where('section', '==', section),
-      where('tags', 'array-contains', tag),
-      limit(count),
-    );
-    const fallbackSnap = await getDocs(fallbackQ);
-    return fallbackSnap.docs.map(toQuestion).sort(() => Math.random() - 0.5);
-  }
   return snap.docs.map(toQuestion).sort(() => Math.random() - 0.5);
 };

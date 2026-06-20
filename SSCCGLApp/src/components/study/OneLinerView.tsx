@@ -1,16 +1,31 @@
 // src/components/study/OneLinerView.tsx
 // Quick Q&A cards — tap to reveal the answer.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
-import { getOneLiners, OneLiner } from '../../data/studyContent';
+import { OneLiner } from '../../data/studyContent';
+import { fetchOneLiners } from '../../services/studyService';
 
 export default function OneLinerView({ section, tag }: { section: string; tag: string }) {
-  const items: OneLiner[] = getOneLiners(section, tag);
+  const [items, setItems] = useState<OneLiner[] | null>(null);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchOneLiners(section, tag).then((l) => { if (!cancelled) setItems(l); });
+    return () => { cancelled = true; };
+  }, [section, tag]);
+
+  if (items === null) {
+    return (
+      <View style={styles.empty}>
+        <ActivityIndicator color={COLORS.accent} size="large" />
+      </View>
+    );
+  }
 
   if (items.length === 0) {
     return (

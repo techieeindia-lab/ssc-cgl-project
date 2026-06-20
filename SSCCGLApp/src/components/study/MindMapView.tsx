@@ -2,15 +2,30 @@
 // Render a MindMapNode tree as nested cards. The center node is highlighted;
 // children fan out below it in collapsible cards.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { COLORS } from '../../theme/colors';
-import { getMindmap, MindMapNode } from '../../data/studyContent';
+import { MindMapNode } from '../../data/studyContent';
+import { fetchMindmap } from '../../services/studyService';
 
 export default function MindMapView({ section, tag }: { section: string; tag: string }) {
-  const tree: MindMapNode | null = getMindmap(section, tag);
+  const [tree, setTree] = useState<MindMapNode | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMindmap(section, tag).then((t) => { if (!cancelled) setTree(t); });
+    return () => { cancelled = true; };
+  }, [section, tag]);
+
+  if (tree === undefined) {
+    return (
+      <View style={styles.empty}>
+        <ActivityIndicator color={COLORS.accent} size="large" />
+      </View>
+    );
+  }
 
   if (!tree) {
     return (
