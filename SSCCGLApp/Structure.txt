@@ -1,0 +1,144 @@
+Folder PATH listing for volume New Volume
+Volume serial number is 48D6-6D72
+D:.
+|   .gitignore
+|   AGENTS.md
+|   app.json
+|   CLAUDE.md
+|   eslint.config.js
+|   expo-env.d.ts
+|   package-lock.json
+|   package.json
+|   README.md
+|   serviceAccountKey.json
+|   Structure.txt
+|   tsconfig.json
+|   
++---.antigravitycli
+|       ff9cc926-8b2c-41f9-b00f-c7ee2f18754a.json
+|       
++---.claude
+|       settings.json
+|       
++---.expo
+|   |   devices.json
+|   |   README.md
+|   |   
+|   +---types
+|   |       router.d.ts
+|   |       
+|   \---web
+|       \---cache
+|           \---production
+|               \---images
+|                   \---favicon
+|                       \---favicon-a4e030697a7571b3e95d31860e4da55d2f98e5e861e2b55e414f45a8556828ba-contain-transparent
+|                               favicon-48.png
+|                               
++---.vscode
+|       extensions.json
+|       settings.json
+|       
++---app
+|   |   index.tsx
+|   |   modal.tsx
+|   |   _layout.tsx
+|   |   
+|   +---(admin)
+|   |       seed.tsx
+|   |       _layout.tsx
+|   |       
+|   +---(auth)
+|   |       login.tsx
+|   |       register.tsx
+|   |       _layout.tsx
+|   |       
+|   +---(tabs)
+|   |       index.tsx
+|   |       practice.tsx
+|   |       profile.tsx
+|   |       progress.tsx
+|   |       test.tsx
+|   |       _layout.tsx
+|   |       
+|   \---exam
+|           pyst.tsx
+|           result.tsx
+|           [id].tsx
+|           
++---assets
+|   \---images
+|           android-icon-background.png
+|           android-icon-foreground.png
+|           android-icon-monochrome.png
+|           favicon.png
+|           icon.png
+|           partial-react-logo.png
+|           react-logo.png
+|           react-logo@2x.png
+|           react-logo@3x.png
+|           splash-icon.png
+|           
++---components
+|   |   external-link.tsx
+|   |   haptic-tab.tsx
+|   |   hello-wave.tsx
+|   |   parallax-scroll-view.tsx
+|   |   themed-text.tsx
+|   |   themed-view.tsx
+|   |   
+|   \---ui
+|           collapsible.tsx
+|           icon-symbol.ios.tsx
+|           icon-symbol.tsx
+|           
++---constants
+|       theme.ts
+|       
++---hooks
+|       use-color-scheme.ts
+|       use-color-scheme.web.ts
+|       use-theme-color.ts
+|       
++---scripts
+|       reset-project.js
+|       seedQuestions.cjs
+|       
+\---src
+    +---components
+    |   +---common
+    |   |       ConfirmModal.tsx
+    |   |       
+    |   \---exam
+    +---constants
+    |       examConfig.js
+    |       
+    +---context
+    |       AuthContext.tsx
+    |       
+    +---data
+    |       sampleQuestions.ts
+    |       
+    +---hooks
+    +---i18n
+    +---navigation
+    +---screens
+    |   +---Analytics
+    |   +---Auth
+    |   +---Dashboard
+    |   |       HomeScreen.tsx
+    |   |       
+    |   +---Exam
+    |   +---MockTest
+    |   \---Profile
+    +---services
+    |       authService.tsx
+    |       firebase.ts
+    |       questionService.ts
+    |       testService.ts
+    |       
+    +---store
+    +---theme
+    |       colors.js
+    |       
+    \---utils

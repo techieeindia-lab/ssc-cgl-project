@@ -1,0 +1,166 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { COLORS } from '../../src/theme/colors';
+import { SECTIONS } from '../../src/constants/examConfig';
+
+const PRACTICE_MODES = [
+  {
+    icon: '⚡', title: 'Daily Quiz', sub: '10 new questions every day',
+    color: '#F39C12', badge: 'TODAY',
+    route: { pathname: '/quiz/play', params: { type: 'mix', count: '10' } },
+  },
+  {
+    icon: '🎯', title: 'Topic Drill', sub: 'Focus on one topic at a time',
+    color: COLORS.accent, badge: null,
+    route: { pathname: '/quiz' },
+  },
+  {
+    icon: '🔁', title: 'Revision Mode', sub: 'Revisit your wrong answers',
+    color: '#E74C3C', badge: null,
+    route: { pathname: '/quiz/revision' },
+  },
+  {
+    icon: '⏱️', title: 'Speed Round', sub: '20 Qs in 10 minutes',
+    color: '#27AE60', badge: 'NEW',
+    route: { pathname: '/quiz/speed' },
+  },
+];
+
+export default function PracticeScreen() {
+  const router = useRouter();
+
+  return (
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Practice</Text>
+          <Text style={styles.sub}>Sharpen your skills daily</Text>
+        </View>
+
+        {/* Daily streak nudge */}
+        <View style={styles.streakCard}>
+          <Text style={styles.streakIcon}>🔥</Text>
+          <View style={styles.streakInfo}>
+            <Text style={styles.streakTitle}>Start your streak today!</Text>
+            <Text style={styles.streakSub}>Complete the daily quiz to begin</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.streakBtn}
+            onPress={() => router.push({ pathname: '/quiz/play', params: { type: 'mix', count: '10' } })}
+          >
+            <Text style={styles.streakBtnText}>Go →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Practice Modes */}
+        <Text style={styles.sectionLabel}>Practice Modes</Text>
+        {PRACTICE_MODES.map((mode, i) => (
+          <TouchableOpacity
+            key={i}
+            style={styles.modeRow}
+            activeOpacity={0.75}
+            onPress={() => router.push(mode.route as any)}
+          >
+            <View style={[styles.modeIconWrap, { backgroundColor: mode.color + '22' }]}>
+              <Text style={styles.modeIcon}>{mode.icon}</Text>
+            </View>
+            <View style={styles.modeInfo}>
+              <Text style={styles.modeTitle}>{mode.title}</Text>
+              <Text style={styles.modeSub}>{mode.sub}</Text>
+            </View>
+            {mode.badge && (
+              <View style={[styles.badge, { backgroundColor: mode.color + '22' }]}>
+                <Text style={[styles.badgeText, { color: mode.color }]}>{mode.badge}</Text>
+              </View>
+            )}
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Practice by Section */}
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Practice by Section</Text>
+        {SECTIONS.map((s) => (
+          <TouchableOpacity
+            key={s.id}
+            style={styles.sectionRow}
+            activeOpacity={0.75}
+            onPress={() => router.push({ pathname: '/quiz', params: { section: s.id } })}
+          >
+            <Text style={styles.secEmoji}>{s.icon}</Text>
+            <View style={styles.secInfo}>
+              <Text style={styles.secName}>{s.name}</Text>
+              <Text style={styles.secSub}>25 topics · 500+ questions</Text>
+            </View>
+            <View style={styles.secBar}>
+              <View style={[styles.secBarFill, { width: '0%', backgroundColor: s.color }]} />
+            </View>
+            <Text style={[styles.secPct, { color: s.color }]}>0%</Text>
+          </TouchableOpacity>
+        ))}
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.bg_primary },
+  header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16 },
+  title: { fontSize: 26, fontWeight: '800', color: COLORS.text_primary },
+  sub: { fontSize: 13, color: COLORS.text_secondary, marginTop: 4 },
+  streakCard: {
+    marginHorizontal: 20, marginBottom: 24,
+    backgroundColor: '#F39C1215', borderRadius: 14, padding: 16,
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: '#F39C1233', gap: 12,
+  },
+  streakIcon: { fontSize: 28 },
+  streakInfo: { flex: 1 },
+  streakTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text_primary },
+  streakSub: { fontSize: 11, color: COLORS.text_secondary, marginTop: 2 },
+  streakBtn: {
+    backgroundColor: '#F39C12',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+  },
+  streakBtnText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  sectionLabel: {
+    fontSize: 14, fontWeight: '700', color: COLORS.text_primary,
+    paddingHorizontal: 20, marginBottom: 10,
+  },
+  modeRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 14,
+  },
+  modeIconWrap: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  modeIcon: { fontSize: 22 },
+  modeInfo: { flex: 1 },
+  modeTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text_primary },
+  modeSub: { fontSize: 11, color: COLORS.text_secondary, marginTop: 2 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  arrow: { fontSize: 20, color: COLORS.text_muted },
+  sectionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 12,
+  },
+  secEmoji: { fontSize: 22 },
+  secInfo: { flex: 1 },
+  secName: { fontSize: 13, fontWeight: '600', color: COLORS.text_primary },
+  secSub: { fontSize: 11, color: COLORS.text_secondary, marginTop: 2 },
+  secBar: {
+    width: 50, height: 4, backgroundColor: COLORS.border,
+    borderRadius: 2, overflow: 'hidden',
+  },
+  secBarFill: { height: '100%', borderRadius: 2 },
+  secPct: { fontSize: 11, fontWeight: '700', minWidth: 30, textAlign: 'right' },
+});
