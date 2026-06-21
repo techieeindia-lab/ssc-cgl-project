@@ -31,6 +31,11 @@ const PRACTICE_MODES = [
     color: '#27AE60', badge: 'NEW',
     route: { pathname: '/quiz/speed' },
   },
+  {
+    icon: '📰', title: 'Current Affairs', sub: "This week's news + quiz",
+    color: '#2E86DE', badge: 'NEW',
+    route: { pathname: '/current-affairs' },
+  },
 ];
 
 export default function PracticeScreen() {

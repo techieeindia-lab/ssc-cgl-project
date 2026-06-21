@@ -1,102 +1,69 @@
 // app/study/index.tsx
-// Study Hub home — pick section then tool (Flashcards / E-book / Mind Map / One-liners).
+// Study Hub home — "Topic Mastery". Pick a SUBJECT first. The tool
+// (Flashcards / E-book / Mind Map / One-liners) is chosen later, per topic,
+// inside app/study/[section].tsx. This keeps the app scalable: adding a
+// 5th study tool later only touches one TOOLS array, not a whole new
+// subject/topic picker.
+//
+// Optional ?tool= query param: Home screen quick-links land here (not on
+// a specific subject) since every tool applies to every subject. We just
+// carry the hint forward to [section].tsx so the tool auto-opens once the
+// user picks a topic.
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
 import { SECTIONS, QUIZ_TOPICS } from '../../src/constants/examConfig';
 
-type Tool = 'flashcards' | 'ebook' | 'mindmap' | 'oneliner';
-
-const TOOLS: { id: Tool; icon: string; title: string; sub: string; color: string }[] = [
-  { id: 'flashcards', icon: '🃏', title: 'Flashcards',  sub: 'Flip-card recall practice',  color: '#E74C3C' },
-  { id: 'ebook',      icon: '📖', title: 'E-Book',       sub: 'Read short chapters',       color: '#2E86DE' },
-  { id: 'mindmap',    icon: '🧠', title: 'Mind Map',     sub: 'Visual topic outlines',     color: '#9B59B6' },
-  { id: 'oneliner',   icon: '⚡', title: 'One-liners',   sub: 'Quick facts & formulas',    color: '#F39C12' },
-];
-
 export default function StudyHub() {
   const router = useRouter();
-  const [tool, setTool] = useState<Tool | null>(null);
+  const { tool } = useLocalSearchParams<{ tool?: string }>();
 
-  if (!tool) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.back}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.heading}>Study Hub</Text>
-          <View style={{ width: 48 }} />
-        </View>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-          <Text style={styles.intro}>
-            Choose a study tool. Each tool gives you a fast, focused way to revise.
-          </Text>
-          {TOOLS.map((t) => (
-            <TouchableOpacity
-              key={t.id}
-              style={[styles.toolCard, { borderLeftColor: t.color }]}
-              activeOpacity={0.85}
-              onPress={() => setTool(t.id)}
-            >
-              <View style={[styles.iconBox, { backgroundColor: t.color + '22' }]}>
-                <Text style={styles.icon}>{t.icon}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.title}>{t.title}</Text>
-                <Text style={styles.sub}>{t.sub}</Text>
-              </View>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // Tool picked → section picker
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setTool(null)}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.back}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.heading}>
-          {TOOLS.find((t) => t.id === tool)?.title}
-        </Text>
+        <Text style={styles.heading}>Topic Mastery</Text>
         <View style={{ width: 48 }} />
       </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={styles.intro}>Pick a subject to continue.</Text>
-        {SECTIONS.map((s) => (
-          <TouchableOpacity
-            key={s.id}
-            style={[styles.toolCard, { borderLeftColor: s.color }]}
-            activeOpacity={0.85}
-            onPress={() => {
-              // E-book and mindmap go to a single picker screen that lists topics.
-              // Flashcards and one-liners go straight to the topic picker too.
-              router.push(`/study/${tool}/${s.id}`);
-            }}
-          >
-            <View style={[styles.iconBox, { backgroundColor: s.color + '22' }]}>
-              <Text style={styles.icon}>{s.icon}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>{s.name}</Text>
-              <Text style={styles.sub}>
-                {QUIZ_TOPICS[s.id as keyof typeof QUIZ_TOPICS]?.length ?? 0} topics
-              </Text>
-            </View>
-            <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.intro}>
+          Pick a subject, then a topic. You'll choose how to study it —
+          flashcards, e-book, mind map, or one-liners — right after.
+        </Text>
+
+        {SECTIONS.map((s) => {
+          const topicCount = QUIZ_TOPICS[s.id as keyof typeof QUIZ_TOPICS]?.length ?? 0;
+          return (
+            <TouchableOpacity
+              key={s.id}
+              style={[styles.subjectCard, { borderLeftColor: s.color }]}
+              activeOpacity={0.85}
+              onPress={() =>
+                router.push({
+                  pathname: '/study/[section]',
+                  params: tool ? { section: s.id, tool } : { section: s.id },
+                })
+              }
+            >
+              <View style={[styles.iconBox, { backgroundColor: s.color + '22' }]}>
+                <Text style={styles.icon}>{s.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>{s.name}</Text>
+                <Text style={styles.sub}>{topicCount} topics · 4 study tools each</Text>
+              </View>
+              <Text style={styles.arrow}>›</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -112,7 +79,7 @@ const styles = StyleSheet.create({
   heading: { color: COLORS.text_primary, fontWeight: '900', fontSize: 18 },
   intro: { color: COLORS.text_secondary, paddingHorizontal: 20, marginBottom: 16, fontSize: 13, lineHeight: 19 },
 
-  toolCard: {
+  subjectCard: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 20, marginBottom: 12,
     backgroundColor: COLORS.bg_card, borderRadius: 14,

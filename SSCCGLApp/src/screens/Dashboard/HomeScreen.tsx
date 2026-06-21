@@ -6,6 +6,7 @@ import {
   StatusBar, Dimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
 import { SECTIONS } from '../../constants/examConfig';
 import { getUserStats, getLevelFromXP, UserStats } from '../../services/coinService';
@@ -212,47 +213,60 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* STUDY HUB */}
-        <View style={styles.studyHeader}>
-          <Text style={styles.sectionTitle}>Study Hub</Text>
-          <TouchableOpacity onPress={() => router.push('/study')}>
-            <Text style={styles.seeAll}>Open Hub ›</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.studyGrid}>
-          <TouchableOpacity
-            style={[styles.studyCard, { borderTopColor: '#E74C3C' }]}
-            onPress={() => router.push('/study/flashcards/QA')}
+        {/* FEATURED — one strong notecard per feature, not 4 cards that
+            all dead-end on the same Topic Mastery screen. */}
+        <Text style={styles.sectionTitle}>Explore More</Text>
+
+        <TouchableOpacity
+          activeOpacity={0.88}
+          style={styles.featuredWrap}
+          onPress={() => router.push('/study')}
+        >
+          <LinearGradient
+            colors={['#2E86DE', '#9B59B6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.featuredCard}
           >
-            <Text style={styles.studyEmoji}>🃏</Text>
-            <Text style={styles.studyTitle}>Flashcards</Text>
-            <Text style={styles.studySub}>Tap-flip recall</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.studyCard, { borderTopColor: '#2E86DE' }]}
-            onPress={() => router.push('/study/ebook/GA')}
+            <View style={styles.featuredIconsRow}>
+              <Text style={styles.featuredIconSmall}>🃏</Text>
+              <Text style={styles.featuredIconSmall}>📖</Text>
+              <Text style={styles.featuredIconSmall}>🧠</Text>
+              <Text style={styles.featuredIconSmall}>⚡</Text>
+            </View>
+            <Text style={styles.featuredTitle}>Topic Mastery</Text>
+            <Text style={styles.featuredSub}>
+              Flashcards, e-books, mind maps & one-liners — pick a topic,
+              study it your way.
+            </Text>
+            <View style={styles.featuredCta}>
+              <Text style={styles.featuredCtaText}>Explore Study Hub →</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          activeOpacity={0.88}
+          style={styles.featuredWrap}
+          onPress={() => router.push('/current-affairs')}
+        >
+          <LinearGradient
+            colors={['#F39C12', '#E74C3C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.featuredCard}
           >
-            <Text style={styles.studyEmoji}>📖</Text>
-            <Text style={styles.studyTitle}>E-Book</Text>
-            <Text style={styles.studySub}>Short chapters</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.studyCard, { borderTopColor: '#9B59B6' }]}
-            onPress={() => router.push('/study/mindmap/QA')}
-          >
-            <Text style={styles.studyEmoji}>🧠</Text>
-            <Text style={styles.studyTitle}>Mind Map</Text>
-            <Text style={styles.studySub}>Topic outlines</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.studyCard, { borderTopColor: '#F39C12' }]}
-            onPress={() => router.push('/study/oneliner/EN')}
-          >
-            <Text style={styles.studyEmoji}>⚡</Text>
-            <Text style={styles.studyTitle}>One-liners</Text>
-            <Text style={styles.studySub}>Quick facts</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={styles.featuredIcon}>📰</Text>
+            <Text style={styles.featuredTitle}>Current Affairs</Text>
+            <Text style={styles.featuredSub}>
+              This week's top stories, summarized — plus a quick quiz to
+              test yourself.
+            </Text>
+            <View style={styles.featuredCta}>
+              <Text style={styles.featuredCtaText}>Read This Week →</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* START BUTTON */}
         <TouchableOpacity
@@ -375,22 +389,24 @@ const styles = StyleSheet.create({
   toolIcon: { fontSize: 22, marginBottom: 6 },
   toolLbl: { fontSize: 10, fontWeight: '700', color: COLORS.text_primary, textAlign: 'center' },
 
-  // Study Hub
-  studyHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingRight: 20, marginBottom: 12,
+  // Featured notecards (Topic Mastery / Current Affairs)
+  featuredWrap: {
+    marginHorizontal: 20, marginBottom: 14, borderRadius: 18,
+    overflow: 'hidden',
   },
-  studyGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, gap: 8, marginBottom: 24,
+  featuredCard: { padding: 20 },
+  featuredIconsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  featuredIconSmall: { fontSize: 22 },
+  featuredIcon: { fontSize: 30, marginBottom: 8 },
+  featuredTitle: { fontSize: 18, fontWeight: '900', color: '#fff', marginBottom: 6 },
+  featuredSub: {
+    fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 17, marginBottom: 16,
   },
-  studyCard: {
-    width: (width - 40) / 2,
-    backgroundColor: COLORS.bg_card, borderRadius: 14, padding: 14,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderTopWidth: 3,
+  featuredCta: {
+    alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
   },
-  studyEmoji: { fontSize: 28, marginBottom: 6 },
-  studyTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text_primary, textAlign: 'center' },
-  studySub: { fontSize: 10, color: COLORS.text_secondary, marginTop: 3, textAlign: 'center' },
+  featuredCtaText: { color: '#fff', fontWeight: '800', fontSize: 12 },
 
   startButton: {
     marginHorizontal: 20, backgroundColor: COLORS.accent, borderRadius: 16,
