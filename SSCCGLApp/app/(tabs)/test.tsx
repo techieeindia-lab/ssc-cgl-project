@@ -10,48 +10,50 @@ import {
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
 import { EXAM_CONFIG, SECTIONS } from '../../src/constants/examConfig';
-
-const TEST_OPTIONS = [
-  {
-    id: 'full_mock',
-    icon: '🎯',
-    title: 'Full Mock Test',
-    sub: '100 Questions · 60 Minutes',
-    tag: 'NEW PATTERN',
-    tagColor: '#E74C3C',
-    color: COLORS.accent,
-  },
-  {
-    id: 'pyst',
-    icon: '⚡',
-    title: 'PYST',
-    sub: 'Previous Year Sectional (25 Qs · 15 Mins)',
-    tag: 'PREVIOUS YEAR',
-    tagColor: '#F39C12',
-    color: '#F39C12',
-  },
-  {
-    id: 'sectional',
-    icon: '📂',
-    title: 'Sectional Test',
-    sub: '15 Questions · 15 Minutes',
-    tag: 'SECTION WISE',
-    tagColor: '#9B59B6',
-    color: '#9B59B6',
-  },
-  {
-    id: 'pyq',
-    icon: '📚',
-    title: 'Previous Year Papers',
-    sub: '2017 – 2024 · All shifts',
-    tag: 'PYQ',
-    tagColor: '#27AE60',
-    color: '#27AE60',
-  },
-];
+import { useTheme } from '../../src/context/ThemeContext';
 
 export default function TestScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+
+  const TEST_OPTIONS = [
+    {
+      id: 'full_mock',
+      icon: '🎯',
+      title: 'Full Mock Test',
+      sub: '100 Questions · 60 Minutes',
+      tag: 'NEW PATTERN',
+      tagColor: '#E74C3C',
+      color: colors.accent,
+    },
+    {
+      id: 'pyst',
+      icon: '⚡',
+      title: 'PYST',
+      sub: 'Previous Year Sectional (25 Qs · 15 Mins)',
+      tag: 'PREVIOUS YEAR',
+      tagColor: '#F39C12',
+      color: '#F39C12',
+    },
+    {
+      id: 'sectional',
+      icon: '📂',
+      title: 'Sectional Test',
+      sub: '15 Questions · 15 Minutes',
+      tag: 'SECTION WISE',
+      tagColor: '#9B59B6',
+      color: '#9B59B6',
+    },
+    {
+      id: 'pyq',
+      icon: '📚',
+      title: 'Previous Year Papers',
+      sub: '2017 – 2024 · All shifts',
+      tag: 'PYQ',
+      tagColor: '#27AE60',
+      color: '#27AE60',
+    },
+  ];
 
   return (
     <View style={styles.container}>

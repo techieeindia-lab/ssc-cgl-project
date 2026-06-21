@@ -2,11 +2,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../src/theme/colors';
 import { AuthProvider } from '../src/context/AuthContext';
+import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 
-export default function RootLayout() {
+function AppContent() {
+  const { theme } = useTheme();
+
   return (
-    <AuthProvider>
-      <StatusBar style="light" backgroundColor={COLORS.bg_primary} />
+    <>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} backgroundColor={COLORS.bg_primary} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -49,6 +52,16 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </AuthProvider>
   );
 }

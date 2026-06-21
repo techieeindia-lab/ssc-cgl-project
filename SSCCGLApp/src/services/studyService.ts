@@ -13,7 +13,7 @@
 // we fall back to the matching static entry in `src/data/studyContent.ts`
 // so the app still works without seeding.
 
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import {
   Flashcard, OneLiner, EbookChapter, MindMapNode,
@@ -128,4 +128,52 @@ export const clearPremiumCache = (uid: string | null | undefined) => {
     return;
   }
   premiumCache.delete(uid);
+};
+
+// ── Study Progress Syncing ────────────────────────────────────────────────
+
+/** Save user's study tool progress (flashcards, ebooks, mindmaps, oneliners) */
+export const saveStudyProgress = async (
+  uid: string,
+  subjectGroupId: string,
+  chapterId: string,
+  tool: string,
+  progress: number
+): Promise<void> => {
+  if (!uid || !subjectGroupId || !chapterId || !tool) return;
+  try {
+    const docRef = doc(db, 'users', uid, 'studyProgress', `${subjectGroupId}_${chapterId}`);
+    await setDoc(docRef, {
+      [tool]: progress,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (e) {
+    console.warn('saveStudyProgress failed', e);
+  }
+};
+
+/** Fetch user's entire study progress mapping */
+export const fetchUserStudyProgress = async (
+  uid: string
+): Promise<Record<string, Record<string, number>>> => {
+  if (!uid) return {};
+  try {
+    const colRef = collection(db, 'users', uid, 'studyProgress');
+    const snap = await getDocs(colRef);
+    const progress: Record<string, Record<string, number>> = {};
+    snap.forEach((d) => {
+      const data = d.data();
+      const cleanData: Record<string, number> = {};
+      Object.keys(data).forEach((k) => {
+        if (typeof data[k] === 'number') {
+          cleanData[k] = data[k];
+        }
+      });
+      progress[d.id] = cleanData;
+    });
+    return progress;
+  } catch (e) {
+    console.warn('fetchUserStudyProgress failed', e);
+    return {};
+  }
 };

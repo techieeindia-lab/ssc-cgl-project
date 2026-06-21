@@ -7,6 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS } from '../../src/theme/colors';
+import { useTheme } from '../../src/context/ThemeContext';
 
 function TabIcon({
   emoji,
@@ -43,6 +44,8 @@ function CenterTabIcon({ focused }: { focused: boolean }) {
 }
 
 export default function TabLayout() {
+  const { theme } = useTheme();
+
   return (
     <Tabs
       screenOptions={{

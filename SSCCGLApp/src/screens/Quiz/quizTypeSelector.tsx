@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { SECTIONS, QUIZ_TOPICS, QUIZ_COUNTS } from '../../constants/examConfig';
 
 type QuizMode = 'home' | 'subject' | 'topic';
@@ -14,6 +15,7 @@ const { width } = Dimensions.get('window');
 
 export default function QuizTypeSelector() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [mode, setMode] = useState<QuizMode>('home');
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState(10);
@@ -34,7 +36,7 @@ export default function QuizTypeSelector() {
     const sec = SECTIONS.find((s) => s.id === selectedSection);
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
+        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setMode('subject')}>
             <Text style={styles.backArrow}>← Back</Text>
@@ -72,7 +74,7 @@ export default function QuizTypeSelector() {
   if (mode === 'subject') {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
+        <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setMode('home')}>
             <Text style={styles.backArrow}>← Back</Text>
@@ -121,7 +123,7 @@ export default function QuizTypeSelector() {
   // ── Home (default) ────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backArrow}>← Back</Text>

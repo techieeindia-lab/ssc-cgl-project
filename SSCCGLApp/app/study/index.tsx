@@ -7,12 +7,15 @@
 //   4. Tap chapter row → open quiz
 //   5. Tap a ring on chapter → open study tool modal
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Modal,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
+import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { fetchUserStudyProgress } from '../../src/services/studyService';
 import {
   SUBJECT_GROUPS, Chapter,
   totalChapters, totalTopics,
@@ -22,9 +25,6 @@ import FlashcardsView from '../../src/components/study/FlashcardsView';
 import EbookView from '../../src/components/study/EbookView';
 import MindMapView from '../../src/components/study/MindMapView';
 import OneLinerView from '../../src/components/study/OneLinerView';
-
-// ─── Fake mastery data (will be replaced with Firestore-backed state) ──
-const MASTERY: Record<string, Record<string, number>> = {};
 
 type ToolId = 'flashcard' | 'mindmap' | 'ebook' | 'oneliner';
 
@@ -37,6 +37,8 @@ const TOOL_META: Record<ToolId, { icon: string; label: string; color: string }> 
 
 export default function StudyHub() {
   const router = useRouter();
+  const { theme } = useTheme();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(SUBJECT_GROUPS[0].id);
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
 
@@ -44,10 +46,37 @@ export default function StudyHub() {
   const [modalTool, setModalTool] = useState<ToolId | null>(null);
   const [modalChapter, setModalChapter] = useState<Chapter | null>(null);
 
+  const [mastery, setMastery] = useState<Record<string, Record<string, number>>>({});
+
   const group = SUBJECT_GROUPS.find((g) => g.id === activeTab)!;
 
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchUserStudyProgress(user.uid).then(setMastery).catch(console.error);
+      } else {
+        setMastery({});
+      }
+    }, [user])
+  );
+
   const getMastery = (chapterId: string, tool: string) =>
-    MASTERY[`${activeTab}_${chapterId}`]?.[tool] ?? 0;
+    mastery[`${activeTab}_chapter_${chapterId}`]?.[tool] ??
+    mastery[`${activeTab}_${chapterId}`]?.[tool] ?? 0;
+
+  const updateLocalMastery = (chapterId: string, tool: ToolId, progress: number) => {
+    setMastery((prev) => {
+      const key = `${activeTab}_${chapterId}`;
+      const existing = prev[key] ?? {};
+      return {
+        ...prev,
+        [key]: {
+          ...existing,
+          [tool]: progress,
+        },
+      };
+    });
+  };
 
   const openTool = (tool: ToolId, chapter: Chapter) => {
     setModalTool(tool);
@@ -61,7 +90,14 @@ export default function StudyHub() {
 
   const renderStudyTool = () => {
     if (!modalChapter || !modalTool) return null;
-    const props = { section: modalChapter.quizParams.section, tag: modalChapter.quizParams.tag };
+    const props = {
+      section: modalChapter.quizParams.section,
+      tag: modalChapter.quizParams.tag,
+      chapterId: modalChapter.id,
+      subjectGroupId: activeTab,
+      uid: user?.uid,
+      onProgress: (progress: number) => updateLocalMastery(modalChapter.id, modalTool, progress),
+    };
 
     switch (modalTool) {
       case 'flashcard': return <FlashcardsView {...props} />;
@@ -74,7 +110,7 @@ export default function StudyHub() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg_primary} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
 
       {/* ── Header ── */}
       <View style={styles.header}>

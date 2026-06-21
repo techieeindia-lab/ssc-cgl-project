@@ -10,6 +10,7 @@ import { getTestHistory } from '../../src/services/testService';
 import { SECTIONS } from '../../src/constants/examConfig';
 import { computeSectionMastery, SectionMastery } from '../../src/services/analyticsService';
 import { getMistakesCount } from '../../src/services/mistakeService';
+import { useTheme } from '../../src/context/ThemeContext';
 
 type RecentTest = {
   id: string;
@@ -26,6 +27,7 @@ type RecentTest = {
 export default function ProgressScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  useTheme();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recent, setRecent] = useState<RecentTest[]>([]);
   const [mastery, setMastery] = useState<SectionMastery[] | null>(null);

@@ -5,6 +5,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
 import { useAuth } from '../../src/context/AuthContext';
+import { useTheme } from '../../src/context/ThemeContext';
 import { getUserStats, getLevelFromXP, UserStats } from '../../src/services/coinService';
 import { logout } from '../../src/services/authService';
 
@@ -22,6 +23,7 @@ const MENU_ITEMS = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const [stats, setStats] = useState<UserStats | null>(null);
 
   useFocusEffect(
@@ -48,6 +50,9 @@ export default function ProfileScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Text style={styles.title}>Profile</Text>
+            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle} activeOpacity={0.75}>
+              <Text style={styles.themeToggleEmoji}>{isDark ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.signedOutCard}>
             <Text style={styles.signedOutEmoji}>👤</Text>
@@ -87,9 +92,14 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>Profile</Text>
-          <TouchableOpacity onPress={handleLogout}>
-            <Text style={styles.logoutLink}>Sign out</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle} activeOpacity={0.75}>
+              <Text style={styles.themeToggleEmoji}>{isDark ? '☀️' : '🌙'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout}>
+              <Text style={styles.logoutLink}>Sign out</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Avatar + Name */}
@@ -160,7 +170,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
   },
   title: { fontSize: 26, fontWeight: '800', color: COLORS.text_primary },
-  logoutLink: { fontSize: 13, fontWeight: '700', color: COLORS.q_not_answered },
+  logoutLink: { fontSize: 13, fontWeight: '700', color: COLORS.q_not_answered, paddingVertical: 8 },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  themeToggle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: COLORS.bg_card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  themeToggleEmoji: {
+    fontSize: 16,
+  },
 
   // Signed-out card
   signedOutCard: {

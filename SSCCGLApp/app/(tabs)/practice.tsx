@@ -9,37 +9,39 @@ import {
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
 import { SECTIONS } from '../../src/constants/examConfig';
-
-const PRACTICE_MODES = [
-  {
-    icon: '⚡', title: 'Daily Quiz', sub: '10 new questions every day',
-    color: '#F39C12', badge: 'TODAY',
-    route: { pathname: '/quiz/play', params: { type: 'mix', count: '10' } },
-  },
-  {
-    icon: '🎯', title: 'Topic Drill', sub: 'Focus on one topic at a time',
-    color: COLORS.accent, badge: null,
-    route: { pathname: '/quiz' },
-  },
-  {
-    icon: '🔁', title: 'Revision Mode', sub: 'Revisit your wrong answers',
-    color: '#E74C3C', badge: null,
-    route: { pathname: '/quiz/revision' },
-  },
-  {
-    icon: '⏱️', title: 'Speed Round', sub: '20 Qs in 10 minutes',
-    color: '#27AE60', badge: 'NEW',
-    route: { pathname: '/quiz/speed' },
-  },
-  {
-    icon: '📰', title: 'Current Affairs', sub: "This week's news + quiz",
-    color: '#2E86DE', badge: 'NEW',
-    route: { pathname: '/current-affairs' },
-  },
-];
+import { useTheme } from '../../src/context/ThemeContext';
 
 export default function PracticeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+
+  const PRACTICE_MODES = [
+    {
+      icon: '⚡', title: 'Daily Quiz', sub: '10 new questions every day',
+      color: '#F39C12', badge: 'TODAY',
+      route: { pathname: '/quiz/play', params: { type: 'mix', count: '10' } },
+    },
+    {
+      icon: '🎯', title: 'Topic Drill', sub: 'Focus on one topic at a time',
+      color: colors.accent, badge: null,
+      route: { pathname: '/quiz' },
+    },
+    {
+      icon: '🔁', title: 'Revision Mode', sub: 'Revisit your wrong answers',
+      color: '#E74C3C', badge: null,
+      route: { pathname: '/quiz/revision' },
+    },
+    {
+      icon: '⏱️', title: 'Speed Round', sub: '20 Qs in 10 minutes',
+      color: '#27AE60', badge: 'NEW',
+      route: { pathname: '/quiz/speed' },
+    },
+    {
+      icon: '📰', title: 'Current Affairs', sub: "This week's news + quiz",
+      color: '#2E86DE', badge: 'NEW',
+      route: { pathname: '/current-affairs' },
+    },
+  ];
 
   return (
     <View style={styles.container}>

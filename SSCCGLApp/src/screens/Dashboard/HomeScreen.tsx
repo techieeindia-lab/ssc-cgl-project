@@ -8,6 +8,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
+import { useTheme } from '../../context/ThemeContext';
 import { SECTIONS } from '../../constants/examConfig';
 import { getUserStats, getLevelFromXP, UserStats } from '../../services/coinService';
 import { useAuth } from '../../context/AuthContext';
@@ -17,6 +18,7 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [stats, setStats] = useState<UserStats | null>(null);
 
   useFocusEffect(
@@ -32,7 +34,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
+      <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* HEADER */}
