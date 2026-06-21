@@ -1,11 +1,10 @@
-// src/screens/Dashboard/HomeScreen.tsx
-// ── FULL REPLACEMENT ──
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, Dimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
 import { useTheme } from '../../context/ThemeContext';
@@ -19,6 +18,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [stats, setStats] = useState<UserStats | null>(null);
 
   useFocusEffect(
@@ -29,42 +29,46 @@ export default function HomeScreen() {
     }, [user]),
   );
 
-  // Always compute levelInfo — falls back to 0 XP if stats not loaded yet
   const levelInfo = getLevelFromXP(stats?.xp ?? 0);
+
+  const greetingKey = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'home.greetingMorning';
+    if (h < 17) return 'home.greetingAfternoon';
+    return 'home.greetingEvening';
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good Morning 👋</Text>
-            <Text style={styles.appName}>SSC CGL</Text>
-            <Text style={styles.appSub}>New Interface</Text>
-            <Text style={styles.tagline}>New Pattern · Sectional Timing</Text>
+            <Text style={styles.greeting}>{t(greetingKey())}</Text>
+            <Text style={styles.appName}>{t('common.appName')}</Text>
+            <Text style={styles.appSub}>{t('common.appSub')}</Text>
+            <Text style={styles.tagline}>{t('home.tagline')}</Text>
           </View>
           <TouchableOpacity style={styles.streakBadge} onPress={() => router.push('/(tabs)/profile')}>
             <Text style={styles.streakFire}>🔥</Text>
             <Text style={styles.streakCount}>{stats?.streak ?? 0}</Text>
-            <Text style={styles.streakLabel}>Streak</Text>
+            <Text style={styles.streakLabel}>{t('home.streak')}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* XP / COINS BAR — always visible */}
         <View style={styles.xpCard}>
           <View style={styles.xpLeft}>
             <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>Lv.{levelInfo.level}</Text>
+              <Text style={styles.levelText}>{t('home.level')}.{levelInfo.level}</Text>
             </View>
             <View>
               <Text style={styles.levelTitle}>{levelInfo.title}</Text>
-              <Text style={styles.xpLabel}>{stats?.xp ?? 0} XP</Text>
+              <Text style={styles.xpLabel}>{stats?.xp ?? 0} {t('home.xp')}</Text>
             </View>
           </View>
           <View style={styles.coinsBadge}>
-            <Text style={styles.coinsIcon}>🪙</Text>
+            <Text style={styles.coinsIcon}>{t('home.coins')}</Text>
             <Text style={styles.coinsCount}>{stats?.coins ?? 0}</Text>
           </View>
         </View>
@@ -74,25 +78,24 @@ export default function HomeScreen() {
               <View style={[styles.xpBarFill, { width: `${levelInfo.progress}%` }]} />
             </View>
             <Text style={styles.xpBarLabel}>
-              {Math.round(levelInfo.progress)}% to {levelInfo.nextLevel.title}
+              {Math.round(levelInfo.progress)}% {t('home.to')} {levelInfo.nextLevel.title}
             </Text>
           </View>
         )}
 
-        {/* PATTERN CARD */}
         <View style={styles.patternCard}>
           <View style={styles.patternHeader}>
-            <Text style={styles.patternTitle}>📋 SSC CGL 2024 Pattern</Text>
+            <Text style={styles.patternTitle}>{t('home.patternTitle')}</Text>
             <View style={styles.liveBadge}>
-              <Text style={styles.liveText}>LIVE</Text>
+              <Text style={styles.liveText}>{t('home.patternLive')}</Text>
             </View>
           </View>
           <View style={styles.patternStats}>
             {[
-              { num: '100', label: 'Questions' },
-              { num: '60',  label: 'Minutes' },
-              { num: '200', label: 'Max Marks' },
-              { num: '-0.5',label: 'Neg. Mark' },
+              { num: '100', label: t('home.questions') },
+              { num: '60',  label: t('home.minutes') },
+              { num: '200', label: t('home.maxMarks') },
+              { num: '-0.5',label: t('home.negMark') },
             ].map((s, i, arr) => (
               <React.Fragment key={s.label}>
                 <View style={styles.statItem}>
@@ -105,8 +108,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* EXAM SECTIONS */}
-        <Text style={styles.sectionTitle}>Exam Sections</Text>
+        <Text style={styles.sectionTitle}>{t('home.examSections')}</Text>
         <View style={styles.sectionsGrid}>
           {SECTIONS.map((section) => (
             <View key={section.id} style={[styles.sectionCard, { borderLeftColor: section.color }]}>
@@ -114,18 +116,17 @@ export default function HomeScreen() {
               <Text style={styles.sectionShort}>{section.shortName}</Text>
               <Text style={styles.sectionName} numberOfLines={2}>{section.name}</Text>
               <View style={styles.sectionMeta}>
-                <Text style={styles.sectionMetaText}>25 Qs</Text>
-                <Text style={[styles.sectionMetaText, { color: section.color }]}>15 min</Text>
+                <Text style={styles.sectionMetaText}>25 {t('home.qs')}</Text>
+                <Text style={[styles.sectionMetaText, { color: section.color }]}>15 {t('home.min')}</Text>
               </View>
             </View>
           ))}
         </View>
 
-        {/* QUIZ SECTION — always rendered, no stats gate */}
         <View style={styles.quizHeader}>
-          <Text style={styles.sectionTitle}>Quick Quiz</Text>
+          <Text style={styles.sectionTitle}>{t('home.quickQuiz')}</Text>
           <TouchableOpacity onPress={() => router.push('/quiz')}>
-            <Text style={styles.seeAll}>See All ›</Text>
+            <Text style={styles.seeAll}>{t('common.seeAll')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -136,8 +137,8 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.quizCardIcon}>🎲</Text>
-            <Text style={styles.quizCardTitle}>Mix Quiz</Text>
-            <Text style={styles.quizCardSub}>All subjects · 10 Qs</Text>
+            <Text style={styles.quizCardTitle}>{t('home.mixQuiz')}</Text>
+            <Text style={styles.quizCardSub}>{t('home.mixQuizSub')}</Text>
             <View style={styles.quizCardReward}>
               <Text style={styles.quizCardRewardText}>+100 🪙</Text>
             </View>
@@ -149,8 +150,8 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.quizCardIcon}>📚</Text>
-            <Text style={styles.quizCardTitle}>Subject Quiz</Text>
-            <Text style={styles.quizCardSub}>Pick a subject</Text>
+            <Text style={styles.quizCardTitle}>{t('home.subjectQuiz')}</Text>
+            <Text style={styles.quizCardSub}>{t('home.subjectQuizSub')}</Text>
             <View style={styles.quizCardReward}>
               <Text style={styles.quizCardRewardText}>+50 🪙</Text>
             </View>
@@ -162,62 +163,57 @@ export default function HomeScreen() {
             activeOpacity={0.85}
           >
             <Text style={styles.quizCardIcon}>🎯</Text>
-            <Text style={styles.quizCardTitle}>Topic Quiz</Text>
-            <Text style={styles.quizCardSub}>Drill one topic</Text>
+            <Text style={styles.quizCardTitle}>{t('home.topicQuiz')}</Text>
+            <Text style={styles.quizCardSub}>{t('home.topicQuizSub')}</Text>
             <View style={styles.quizCardReward}>
               <Text style={styles.quizCardRewardText}>+50 🪙</Text>
             </View>
           </TouchableOpacity>
         </View>
 
-        {/* QUICK PRACTICE */}
-        <Text style={styles.sectionTitle}>Quick Practice</Text>
+        <Text style={styles.sectionTitle}>{t('home.quickPractice')}</Text>
         <View style={styles.quickActions}>
           <TouchableOpacity style={styles.quickCard} onPress={() => router.push('/(tabs)/test')}>
             <Text style={styles.quickIcon}>📄</Text>
-            <Text style={styles.quickLabel}>Mock Test</Text>
-            <Text style={styles.quickSub}>Full 100 Qs</Text>
+            <Text style={styles.quickLabel}>{t('home.mockTest')}</Text>
+            <Text style={styles.quickSub}>{t('home.mockTestSub')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickCard} onPress={() => router.push('/(tabs)/test')}>
             <Text style={styles.quickIcon}>📚</Text>
-            <Text style={styles.quickLabel}>Prev. Year</Text>
-            <Text style={styles.quickSub}>2017–2024</Text>
+            <Text style={styles.quickLabel}>{t('home.prevYear')}</Text>
+            <Text style={styles.quickSub}>{t('home.prevYearSub')}</Text>
           </TouchableOpacity>
-          {/* Fixed: Daily Quiz now goes to quiz engine, not practice tab */}
           <TouchableOpacity
             style={styles.quickCard}
             onPress={() => router.push({ pathname: '/quiz/play', params: { type: 'mix', count: '10' } })}
           >
             <Text style={styles.quickIcon}>⚡</Text>
-            <Text style={styles.quickLabel}>Daily Quiz</Text>
-            <Text style={styles.quickSub}>10 Questions</Text>
+            <Text style={styles.quickLabel}>{t('home.dailyQuiz')}</Text>
+            <Text style={styles.quickSub}>{t('home.dailyQuizSub')}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* SMART TOOLS */}
-        <Text style={styles.sectionTitle}>Smart Tools</Text>
+        <Text style={styles.sectionTitle}>{t('home.smartTools')}</Text>
         <View style={styles.toolsRow}>
           <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools/calculator')}>
             <Text style={styles.toolIcon}>🧮</Text>
-            <Text style={styles.toolLbl}>Calculator</Text>
+            <Text style={styles.toolLbl}>{t('home.calculator')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools/periodic-table')}>
             <Text style={styles.toolIcon}>⚛️</Text>
-            <Text style={styles.toolLbl}>Periodic Table</Text>
+            <Text style={styles.toolLbl}>{t('home.periodicTable')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools/speed-math')}>
             <Text style={styles.toolIcon}>⏱️</Text>
-            <Text style={styles.toolLbl}>Speed Math</Text>
+            <Text style={styles.toolLbl}>{t('home.speedMath')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools')}>
             <Text style={styles.toolIcon}>🛠️</Text>
-            <Text style={styles.toolLbl}>All Tools</Text>
+            <Text style={styles.toolLbl}>{t('home.allTools')}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* FEATURED — one strong notecard per feature, not 4 cards that
-            all dead-end on the same Topic Mastery screen. */}
-        <Text style={styles.sectionTitle}>Explore More</Text>
+        <Text style={styles.sectionTitle}>{t('home.exploreMore')}</Text>
 
         <TouchableOpacity
           activeOpacity={0.88}
@@ -236,13 +232,10 @@ export default function HomeScreen() {
               <Text style={styles.featuredIconSmall}>🧠</Text>
               <Text style={styles.featuredIconSmall}>⚡</Text>
             </View>
-            <Text style={styles.featuredTitle}>Topic Mastery</Text>
-            <Text style={styles.featuredSub}>
-              Flashcards, e-books, mind maps & one-liners — pick a topic,
-              study it your way.
-            </Text>
+            <Text style={styles.featuredTitle}>{t('home.topicMastery')}</Text>
+            <Text style={styles.featuredSub}>{t('home.topicMasterySub')}</Text>
             <View style={styles.featuredCta}>
-              <Text style={styles.featuredCtaText}>Explore Study Hub →</Text>
+              <Text style={styles.featuredCtaText}>{t('home.exploreStudyHub')}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -259,25 +252,21 @@ export default function HomeScreen() {
             style={styles.featuredCard}
           >
             <Text style={styles.featuredIcon}>📰</Text>
-            <Text style={styles.featuredTitle}>Current Affairs</Text>
-            <Text style={styles.featuredSub}>
-              This week's top stories, summarized — plus a quick quiz to
-              test yourself.
-            </Text>
+            <Text style={styles.featuredTitle}>{t('home.currentAffairs')}</Text>
+            <Text style={styles.featuredSub}>{t('home.currentAffairsSub')}</Text>
             <View style={styles.featuredCta}>
-              <Text style={styles.featuredCtaText}>Read This Week →</Text>
+              <Text style={styles.featuredCtaText}>{t('home.readThisWeek')}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* START BUTTON */}
         <TouchableOpacity
           style={styles.startButton}
           activeOpacity={0.85}
           onPress={() => router.push('/(tabs)/test')}
         >
-          <Text style={styles.startButtonText}>🚀  Start Full Mock Test</Text>
-          <Text style={styles.startButtonSub}>100 Questions · 60 Minutes · New Pattern</Text>
+          <Text style={styles.startButtonText}>{t('home.startFullMock')}</Text>
+          <Text style={styles.startButtonSub}>{t('home.startFullMockSub')}</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />

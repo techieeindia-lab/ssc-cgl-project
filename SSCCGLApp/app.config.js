@@ -60,6 +60,7 @@ module.exports = ({ config }) => ({
     ],
     'expo-font',
     'expo-web-browser',
+    'expo-localization',
   ],
 
   experiments: {

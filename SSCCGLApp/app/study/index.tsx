@@ -12,6 +12,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Modal,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { useTheme } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
@@ -28,17 +29,18 @@ import OneLinerView from '../../src/components/study/OneLinerView';
 
 type ToolId = 'flashcard' | 'mindmap' | 'ebook' | 'oneliner';
 
-const TOOL_META: Record<ToolId, { icon: string; label: string; color: string }> = {
-  flashcard: { icon: '🃏', label: 'Flashcards', color: '#2E86DE' },
-  mindmap:   { icon: '🧠', label: 'Mind Map',   color: '#9B59B6' },
-  ebook:     { icon: '📖', label: 'E-Book',     color: '#27AE60' },
-  oneliner:  { icon: '⚡', label: 'One-Liners', color: '#F39C12' },
-};
-
 export default function StudyHub() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { user } = useAuth();
+
+  const TOOL_META: Record<ToolId, { icon: string; label: string; color: string }> = {
+    flashcard: { icon: '🃏', label: t('study.flashcards'), color: '#2E86DE' },
+    mindmap:   { icon: '🧠', label: t('study.mindMap'),   color: '#9B59B6' },
+    ebook:     { icon: '📖', label: t('study.ebook'),     color: '#27AE60' },
+    oneliner:  { icon: '⚡', label: t('study.oneLiners'), color: '#F39C12' },
+  };
   const [activeTab, setActiveTab] = useState(SUBJECT_GROUPS[0].id);
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
 
@@ -115,9 +117,9 @@ export default function StudyHub() {
       {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Back</Text>
+          <Text style={styles.back}>{t('study.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.heading}>Topic Mastery</Text>
+        <Text style={styles.heading}>{t('study.title')}</Text>
         <View style={{ width: 48 }} />
       </View>
 
@@ -148,7 +150,7 @@ export default function StudyHub() {
       {/* ── Group Stats Bar ── */}
       <View style={styles.statsBar}>
         <Text style={styles.statsText}>
-          {totalTopics(group)} topics · {totalChapters(group)} chapters
+          {totalTopics(group)} {t('study.topics')} · {totalChapters(group)} {t('study.chapters')}
         </Text>
       </View>
 
@@ -168,9 +170,9 @@ export default function StudyHub() {
                   <Text style={styles.topicIcon}>{topic.icon}</Text>
                 </View>
                 <View style={styles.topicInfo}>
-                  <Text style={styles.topicLabel}>{topic.label}</Text>
+                    <Text style={styles.topicLabel}>{topic.label}</Text>
                   <Text style={styles.topicMeta}>
-                    {topic.chapters.length} chapters
+                    {topic.chapters.length} {t('study.chapters')}
                   </Text>
                 </View>
                 <Text style={[styles.chevron, expanded && styles.chevronUp]}>›</Text>
@@ -200,7 +202,7 @@ export default function StudyHub() {
                       >
                         <View style={styles.chapterDot} />
                         <Text style={styles.chapterLabel}>{ch.label}</Text>
-                        <Text style={styles.chapterArrow}>Quiz →</Text>
+                        <Text style={styles.chapterArrow}>{t('study.quiz')}</Text>
                       </TouchableOpacity>
 
                       {/* 4 rings for this chapter */}
@@ -239,7 +241,7 @@ export default function StudyHub() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={closeTool}>
-              <Text style={styles.modalBack}>← Close</Text>
+              <Text style={styles.modalBack}>{t('study.close')}</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
               {modalTool ? TOOL_META[modalTool].icon : ''}{' '}

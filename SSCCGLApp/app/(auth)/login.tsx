@@ -12,11 +12,13 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { loginWithEmail } from '../../src/services/authService';
 import { COLORS } from '../../src/theme/colors';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +27,7 @@ export default function LoginScreen() {
 
   async function handleEmailLogin() {
     if (!email || !password) {
-      Alert.alert('Missing fields', 'Please enter email and password');
+      Alert.alert(t('auth.missingFields'), t('auth.missingFieldsSimple'));
       return;
     }
 
@@ -35,7 +37,7 @@ export default function LoginScreen() {
       await loginWithEmail(email.trim(), password);
       router.replace('/(tabs)');
     } catch (e: any) {
-      Alert.alert('Login failed', e?.message || 'Something went wrong');
+      Alert.alert(t('auth.loginFailed'), e?.message || t('auth.somethingWentWrong'));
     } finally {
       setLoading(false);
     }
@@ -51,22 +53,22 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scroll}
       >
         <View style={styles.header}>
-          <Text style={styles.appName}>SSC CGL</Text>
-          <Text style={styles.appSub}>New Interface</Text>
+          <Text style={styles.appName}>{t('common.appName')}</Text>
+          <Text style={styles.appSub}>{t('common.appSub')}</Text>
 
-          <Text style={styles.title}>Welcome back 👋</Text>
+          <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
           <Text style={styles.sub}>
-            Sign in to continue your preparation
+            {t('auth.signInSub')}
           </Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('auth.email')}</Text>
 
             <TextInput
               style={styles.input}
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor={COLORS.text_muted}
               value={email}
               onChangeText={setEmail}
@@ -77,12 +79,12 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('auth.password')}</Text>
 
             <View style={styles.passwordRow}>
               <TextInput
                 style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                placeholder="Your password"
+                placeholder={t('auth.passwordPlaceholder')}
                 placeholderTextColor={COLORS.text_muted}
                 value={password}
                 onChangeText={setPassword}
@@ -110,20 +112,20 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginBtnText}>Sign In</Text>
+              <Text style={styles.loginBtnText}>{t('common.signIn')}</Text>
             )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Don't have an account?{' '}
+            {t('auth.noAccount')}
           </Text>
 
           <TouchableOpacity
             onPress={() => router.push('/(auth)/register')}
           >
-            <Text style={styles.footerLink}>Register</Text>
+            <Text style={styles.footerLink}>{t('common.register')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

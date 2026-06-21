@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { useAuth } from '../../src/context/AuthContext';
 import { getUserStats, getLevelFromXP, UserStats } from '../../src/services/coinService';
@@ -27,6 +28,7 @@ type RecentTest = {
 export default function ProgressScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
   useTheme();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recent, setRecent] = useState<RecentTest[]>([]);
@@ -74,20 +76,20 @@ export default function ProgressScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>My Progress</Text>
-          <Text style={styles.sub}>Track your performance</Text>
+          <Text style={styles.title}>{t('progress.title')}</Text>
+          <Text style={styles.sub}>{t('progress.sub')}</Text>
         </View>
         <View style={styles.signedOutCard}>
           <Text style={styles.signedOutEmoji}>📊</Text>
-          <Text style={styles.signedOutTitle}>Sign in to see your progress</Text>
+          <Text style={styles.signedOutTitle}>{t('progress.signedOutTitle')}</Text>
           <Text style={styles.signedOutSub}>
-            Your test history, accuracy trends, and section-wise strengths will appear here.
+            {t('progress.signedOutSub')}
           </Text>
           <TouchableOpacity
             style={styles.signedOutBtn}
             onPress={() => router.push('/(auth)/login')}
           >
-            <Text style={styles.signedOutBtnTxt}>Sign In</Text>
+            <Text style={styles.signedOutBtnTxt}>{t('common.signIn')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -110,19 +112,17 @@ export default function ProgressScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>My Progress</Text>
-          <Text style={styles.sub}>Track your performance</Text>
+          <Text style={styles.title}>{t('progress.title')}</Text>
+          <Text style={styles.sub}>{t('progress.sub')}</Text>
         </View>
 
-        {/* KPI strip */}
         <View style={styles.statsRow}>
-          <KPI value={String(testsTaken)} label="Tests" color={COLORS.accent_light} />
-          <KPI value={`${bestScore}%`}    label="Best"  color="#27AE60" />
-          <KPI value={`${stats?.streak ?? 0}`} label="Streak" color="#F39C12" />
-          <KPI value={`${stats?.xp ?? 0}`} label="XP"    color="#9B59B6" />
+          <KPI value={String(testsTaken)} label={t('progress.tests')} color={COLORS.accent_light} />
+          <KPI value={`${bestScore}%`}    label={t('progress.best')}  color="#27AE60" />
+          <KPI value={`${stats?.streak ?? 0}`} label={t('progress.streak')} color="#F39C12" />
+          <KPI value={`${stats?.xp ?? 0}`} label={t('progress.xp')}    color="#9B59B6" />
         </View>
 
-        {/* Level card */}
         <View style={styles.levelCard}>
           <View style={styles.levelRow}>
             <View style={styles.levelBadge}>
@@ -130,7 +130,7 @@ export default function ProgressScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.levelTitle}>{levelInfo.title}</Text>
-              <Text style={styles.levelXp}>{stats?.xp ?? 0} XP earned</Text>
+              <Text style={styles.levelXp}>{stats?.xp ?? 0} {t('progress.xpEarned')}</Text>
             </View>
             <Text style={styles.coinsBox}>🪙 {stats?.coins ?? 0}</Text>
           </View>
@@ -140,21 +140,20 @@ export default function ProgressScreen() {
                 <View style={[styles.barFill, { width: `${levelInfo.progress}%` }]} />
               </View>
               <Text style={styles.barLbl}>
-                {Math.round(levelInfo.progress)}% to {levelInfo.nextLevel.title}
+                {Math.round(levelInfo.progress)}% {t('home.to')} {levelInfo.nextLevel.title}
               </Text>
             </View>
           )}
         </View>
 
-        {/* Section mastery — real per-section accuracy from analyticsService */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Section Mastery</Text>
+          <Text style={styles.sectionTitle}>{t('progress.sectionMastery')}</Text>
           {mistakesCount > 0 && (
             <TouchableOpacity
               style={styles.reviseBadge}
               onPress={() => router.push('/quiz/revision')}
             >
-              <Text style={styles.reviseBadgeTxt}>🔁 {mistakesCount} to revise</Text>
+              <Text style={styles.reviseBadgeTxt}>{t('progress.toRevise', { count: mistakesCount })}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -184,30 +183,29 @@ export default function ProgressScreen() {
           })}
           {!mastery || mastery.every((m) => m.attempted === 0) ? (
             <Text style={styles.sectionHint}>
-              Take a few tests to unlock section-wise accuracy breakdowns.
+              {t('progress.sectionHint')}
             </Text>
           ) : null}
         </View>
 
-        {/* Recent tests */}
         <View style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>Recent Tests</Text>
+          <Text style={styles.sectionTitle}>{t('progress.recentTests')}</Text>
           {recent.length > 0 && (
             <TouchableOpacity onPress={() => router.push('/profile/history' as any)}>
-              <Text style={styles.seeAll}>See All ›</Text>
+              <Text style={styles.seeAll}>{t('progress.seeAll')}</Text>
             </TouchableOpacity>
           )}
         </View>
         {recent.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📝</Text>
-            <Text style={styles.emptyTxt}>No tests yet</Text>
-            <Text style={styles.emptySub}>Take your first mock test from the Test tab.</Text>
+            <Text style={styles.emptyTxt}>{t('progress.noTestsYet')}</Text>
+            <Text style={styles.emptySub}>{t('progress.noTestsSub')}</Text>
             <TouchableOpacity
               style={styles.emptyBtn}
               onPress={() => router.push('/(tabs)/test')}
             >
-              <Text style={styles.emptyBtnTxt}>Start a Test →</Text>
+              <Text style={styles.emptyBtnTxt}>{t('progress.startTest')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -223,7 +221,7 @@ export default function ProgressScreen() {
                 <View key={r.id} style={styles.recentRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.recentTitle}>
-                      {r.testType === 'full' ? 'Full Mock' : r.testType}
+                      {r.testType === 'full' ? t('progress.fullMock') : r.testType}
                     </Text>
                     <Text style={styles.recentSub}>
                       {r.correct}✓ · {r.wrong}✗ · {r.skipped}—  •  {date}

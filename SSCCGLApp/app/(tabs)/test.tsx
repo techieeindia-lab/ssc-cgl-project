@@ -8,6 +8,7 @@ import {
   Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { EXAM_CONFIG, SECTIONS } from '../../src/constants/examConfig';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -15,41 +16,42 @@ import { useTheme } from '../../src/context/ThemeContext';
 export default function TestScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const TEST_OPTIONS = [
     {
       id: 'full_mock',
       icon: '🎯',
-      title: 'Full Mock Test',
-      sub: '100 Questions · 60 Minutes',
-      tag: 'NEW PATTERN',
+      title: t('test.fullMock'),
+      sub: t('test.fullMockSub'),
+      tag: t('test.newPattern'),
       tagColor: '#E74C3C',
       color: colors.accent,
     },
     {
       id: 'pyst',
       icon: '⚡',
-      title: 'PYST',
-      sub: 'Previous Year Sectional (25 Qs · 15 Mins)',
-      tag: 'PREVIOUS YEAR',
+      title: t('test.pyst'),
+      sub: t('test.pystSub'),
+      tag: t('test.previousYear'),
       tagColor: '#F39C12',
       color: '#F39C12',
     },
     {
       id: 'sectional',
       icon: '📂',
-      title: 'Sectional Test',
-      sub: '15 Questions · 15 Minutes',
-      tag: 'SECTION WISE',
+      title: t('test.sectional'),
+      sub: t('test.sectionalSub'),
+      tag: t('test.sectionWise'),
       tagColor: '#9B59B6',
       color: '#9B59B6',
     },
     {
       id: 'pyq',
       icon: '📚',
-      title: 'Previous Year Papers',
-      sub: '2017 – 2024 · All shifts',
-      tag: 'PYQ',
+      title: t('test.pyq'),
+      sub: t('test.pyqSub'),
+      tag: t('test.pyqTag'),
       tagColor: '#27AE60',
       color: '#27AE60',
     },
@@ -59,18 +61,17 @@ export default function TestScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Start a Test</Text>
-          <Text style={styles.sub}>Choose your practice mode</Text>
+          <Text style={styles.title}>{t('test.title')}</Text>
+          <Text style={styles.sub}>{t('test.sub')}</Text>
         </View>
 
-        {/* Exam Info Banner */}
         <View style={styles.banner}>
           <View style={styles.bannerRow}>
             {[
-              { n: EXAM_CONFIG.totalQuestions, l: 'Questions' },
-              { n: `${EXAM_CONFIG.totalDuration / 60}`, l: 'Minutes' },
-              { n: EXAM_CONFIG.marksPerCorrect * EXAM_CONFIG.totalQuestions, l: 'Max Marks' },
-              { n: EXAM_CONFIG.marksPerWrong, l: 'Neg. Mark' },
+              { n: EXAM_CONFIG.totalQuestions, l: t('test.questions') },
+              { n: `${EXAM_CONFIG.totalDuration / 60}`, l: t('test.minutes') },
+              { n: EXAM_CONFIG.marksPerCorrect * EXAM_CONFIG.totalQuestions, l: t('test.maxMarks') },
+              { n: EXAM_CONFIG.marksPerWrong, l: t('test.negMark') },
             ].map((item, i) => (
               <React.Fragment key={i}>
                 <View style={styles.bannerStat}>
@@ -83,7 +84,6 @@ export default function TestScreen() {
           </View>
         </View>
 
-        {/* Test Options */}
         <View style={styles.optionsGrid}>
           {TEST_OPTIONS.map((opt) => (
             <TouchableOpacity
@@ -115,8 +115,7 @@ export default function TestScreen() {
           ))}
         </View>
 
-        {/* Section Picker */}
-        <Text style={styles.sectionLabel}>Quick Sectional Start</Text>
+        <Text style={styles.sectionLabel}>{t('test.quickSectional')}</Text>
         <View style={styles.sectionRow}>
           {SECTIONS.map((s) => (
             <TouchableOpacity
@@ -133,22 +132,21 @@ export default function TestScreen() {
           ))}
         </View>
 
-      {/* Speed Round shortcut */}
-        <Text style={styles.sectionLabel}>Quick Games</Text>
+        <Text style={styles.sectionLabel}>{t('test.quickGames')}</Text>
         <View style={styles.sectionRow}>
           <TouchableOpacity
             style={[styles.sectionChip, { borderColor: '#F39C12' }]}
             onPress={() => router.push('/quiz/speed')}
           >
             <Text style={styles.sectionEmoji}>⏱️</Text>
-            <Text style={[styles.sectionChipText, { color: '#F39C12' }]}>Speed Round</Text>
+            <Text style={[styles.sectionChipText, { color: '#F39C12' }]}>{t('test.speedRound')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.sectionChip, { borderColor: '#E74C3C' }]}
             onPress={() => router.push('/quiz/revision')}
           >
             <Text style={styles.sectionEmoji}>🔁</Text>
-            <Text style={[styles.sectionChipText, { color: '#E74C3C' }]}>Revision</Text>
+            <Text style={[styles.sectionChipText, { color: '#E74C3C' }]}>{t('test.revision')}</Text>
           </TouchableOpacity>
         </View>
 

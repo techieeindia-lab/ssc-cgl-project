@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { SECTIONS } from '../../src/constants/examConfig';
 import { useTheme } from '../../src/context/ThemeContext';
@@ -14,31 +15,32 @@ import { useTheme } from '../../src/context/ThemeContext';
 export default function PracticeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const PRACTICE_MODES = [
     {
-      icon: '⚡', title: 'Daily Quiz', sub: '10 new questions every day',
-      color: '#F39C12', badge: 'TODAY',
+      icon: '⚡', title: t('practice.dailyQuiz'), sub: t('practice.dailyQuizSub'),
+      color: '#F39C12', badge: t('home.today'),
       route: { pathname: '/quiz/play', params: { type: 'mix', count: '10' } },
     },
     {
-      icon: '🎯', title: 'Topic Drill', sub: 'Focus on one topic at a time',
+      icon: '🎯', title: t('practice.topicDrill'), sub: t('practice.topicDrillSub'),
       color: colors.accent, badge: null,
       route: { pathname: '/quiz' },
     },
     {
-      icon: '🔁', title: 'Revision Mode', sub: 'Revisit your wrong answers',
+      icon: '🔁', title: t('practice.revisionMode'), sub: t('practice.revisionModeSub'),
       color: '#E74C3C', badge: null,
       route: { pathname: '/quiz/revision' },
     },
     {
-      icon: '⏱️', title: 'Speed Round', sub: '20 Qs in 10 minutes',
-      color: '#27AE60', badge: 'NEW',
+      icon: '⏱️', title: t('practice.speedRound'), sub: t('practice.speedRoundSub'),
+      color: '#27AE60', badge: t('home.new'),
       route: { pathname: '/quiz/speed' },
     },
     {
-      icon: '📰', title: 'Current Affairs', sub: "This week's news + quiz",
-      color: '#2E86DE', badge: 'NEW',
+      icon: '📰', title: t('practice.currentAffairs'), sub: t('practice.currentAffairsSub'),
+      color: '#2E86DE', badge: t('home.new'),
       route: { pathname: '/current-affairs' },
     },
   ];
@@ -47,27 +49,25 @@ export default function PracticeScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Practice</Text>
-          <Text style={styles.sub}>Sharpen your skills daily</Text>
+          <Text style={styles.title}>{t('practice.title')}</Text>
+          <Text style={styles.sub}>{t('practice.sub')}</Text>
         </View>
 
-        {/* Daily streak nudge */}
         <View style={styles.streakCard}>
           <Text style={styles.streakIcon}>🔥</Text>
           <View style={styles.streakInfo}>
-            <Text style={styles.streakTitle}>Start your streak today!</Text>
-            <Text style={styles.streakSub}>Complete the daily quiz to begin</Text>
+            <Text style={styles.streakTitle}>{t('practice.streakTitle')}</Text>
+            <Text style={styles.streakSub}>{t('practice.streakSub')}</Text>
           </View>
           <TouchableOpacity
             style={styles.streakBtn}
             onPress={() => router.push({ pathname: '/quiz/play', params: { type: 'mix', count: '10' } })}
           >
-            <Text style={styles.streakBtnText}>Go →</Text>
+            <Text style={styles.streakBtnText}>{t('practice.go')}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Practice Modes */}
-        <Text style={styles.sectionLabel}>Practice Modes</Text>
+        <Text style={styles.sectionLabel}>{t('practice.practiceModes')}</Text>
         {PRACTICE_MODES.map((mode, i) => (
           <TouchableOpacity
             key={i}
@@ -91,8 +91,7 @@ export default function PracticeScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* Practice by Section */}
-        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Practice by Section</Text>
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>{t('practice.practiceBySection')}</Text>
         {SECTIONS.map((s) => (
           <TouchableOpacity
             key={s.id}
@@ -103,7 +102,7 @@ export default function PracticeScreen() {
             <Text style={styles.secEmoji}>{s.icon}</Text>
             <View style={styles.secInfo}>
               <Text style={styles.secName}>{s.name}</Text>
-              <Text style={styles.secSub}>25 topics · 500+ questions</Text>
+              <Text style={styles.secSub}>25 {t('practice.topics')} · 500+ {t('practice.questions')}</Text>
             </View>
             <View style={styles.secBar}>
               <View style={[styles.secBarFill, { width: '0%', backgroundColor: s.color }]} />

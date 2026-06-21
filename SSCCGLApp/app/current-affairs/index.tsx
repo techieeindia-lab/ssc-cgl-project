@@ -8,6 +8,7 @@ import {
   ActivityIndicator, StatusBar, RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import {
   fetchRecentArticles, groupByWeek, isoWeek,
@@ -18,6 +19,7 @@ type Segment = 'week' | 'month' | 'all';
 
 export default function CurrentAffairsHome() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [articles, setArticles] = useState<CurrentAffairsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,14 +60,14 @@ export default function CurrentAffairsHome() {
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Back</Text>
+          <Text style={styles.back}>{t('currentAffairs.back')}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.heading}>📰 Current Affairs</Text>
-          <Text style={styles.sub}>Weekly & monthly digests</Text>
+          <Text style={styles.heading}>{t('currentAffairs.title')}</Text>
+          <Text style={styles.sub}>{t('currentAffairs.sub')}</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/current-affairs/weekly-quiz' as any)}>
-          <Text style={styles.quizLink}>📝 Quiz</Text>
+          <Text style={styles.quizLink}>{t('currentAffairs.quiz')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -77,7 +79,7 @@ export default function CurrentAffairsHome() {
             onPress={() => setSegment(s)}
           >
             <Text style={[styles.segmentTxt, segment === s && styles.segmentTxtActive]}>
-              {s === 'week' ? 'This Week' : s === 'month' ? 'This Month' : 'All'}
+              {s === 'week' ? t('currentAffairs.thisWeek') : s === 'month' ? t('currentAffairs.thisMonth') : t('currentAffairs.all')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -93,8 +95,8 @@ export default function CurrentAffairsHome() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} />}
         >
           <Text style={styles.emptyEmoji}>📭</Text>
-          <Text style={styles.emptyTxt}>No current affairs for this view yet.</Text>
-          <Text style={styles.emptySub}>Pull to refresh, or check back soon.</Text>
+          <Text style={styles.emptyTxt}>{t('currentAffairs.noArticles')}</Text>
+          <Text style={styles.emptySub}>{t('currentAffairs.pullToRefresh')}</Text>
         </ScrollView>
       ) : (
         <ScrollView

@@ -1,30 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, Modal,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { useAuth } from '../../src/context/AuthContext';
 import { useTheme } from '../../src/context/ThemeContext';
 import { getUserStats, getLevelFromXP, UserStats } from '../../src/services/coinService';
 import { logout } from '../../src/services/authService';
-
-const MENU_ITEMS = [
-  { icon: '📋', label: 'My Test History',   sub: 'View all past tests',           route: '/profile/history' },
-  { icon: '🏆', label: 'Leaderboard',       sub: 'See how you rank',              route: '/profile/leaderboard' },
-  { icon: '⭐', label: 'Upgrade to Premium',sub: 'Unlock all tests & features',   accent: true, route: '/profile/premium' },
-  { icon: '🔔', label: 'Notifications',     sub: 'Manage alerts',                 route: '/profile/notifications' },
-  { icon: '🌐', label: 'Language',          sub: 'English',                       route: '/profile/language' },
-  { icon: '📞', label: 'Support',           sub: 'Get help',                      route: '/profile/support' },
-  { icon: '⚙️', label: 'Settings',          sub: 'App preferences',               route: '/profile/settings' },
-  { icon: '🛠️', label: 'Admin Panel',       sub: 'Upload and seed questions',     route: '/(admin)/seed' },
-];
+import { changeLanguage } from '../../src/i18n';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const { theme, toggleTheme, isDark } = useTheme();
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [langModal, setLangModal] = useState(false);
+
+  const currentLang = i18n.language?.startsWith('hi') ? 'hi' : 'en';
 
   useFocusEffect(
     useCallback(() => {
@@ -37,11 +32,27 @@ export default function ProfileScreen() {
   const levelInfo = getLevelFromXP(stats?.xp ?? 0);
 
   const handleLogout = () => {
-    Alert.alert('Sign out?', 'You can sign back in anytime.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => logout().catch(console.error) },
+    Alert.alert(t('profile.signOutTitle'), t('profile.signOutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.signOut'), style: 'destructive', onPress: () => logout().catch(console.error) },
     ]);
   };
+
+  const switchLang = async (lang: 'en' | 'hi') => {
+    await changeLanguage(lang);
+    setLangModal(false);
+  };
+
+  const MENU_ITEMS = [
+    { icon: '📋', label: t('profile.menuItems.testHistory'),   sub: t('profile.menuItems.testHistorySub'),           route: '/profile/history' },
+    { icon: '🏆', label: t('profile.menuItems.leaderboard'),   sub: t('profile.menuItems.leaderboardSub'),           route: '/profile/leaderboard' },
+    { icon: '⭐', label: t('profile.menuItems.premium'),        sub: t('profile.menuItems.premiumSub'),               accent: true, route: '/profile/premium' },
+    { icon: '🔔', label: t('profile.menuItems.notifications'),  sub: t('profile.menuItems.notificationsSub'),         route: '/profile/notifications' },
+    { icon: '🌐', label: t('profile.menuItems.language'),       sub: currentLang === 'hi' ? t('profile.menuItems.languageSubHi') : t('profile.menuItems.languageSub'), onPress: () => setLangModal(true) },
+    { icon: '📞', label: t('profile.menuItems.support'),        sub: t('profile.menuItems.supportSub'),               route: '/profile/support' },
+    { icon: '⚙️', label: t('profile.menuItems.settings'),       sub: t('profile.menuItems.settingsSub'),              route: '/profile/settings' },
+    { icon: '🛠️', label: t('profile.menuItems.admin'),          sub: t('profile.menuItems.adminSub'),                 route: '/(admin)/seed' },
+  ];
 
   // ── Signed-out state ──
   if (!user) {
@@ -49,35 +60,43 @@ export default function ProfileScreen() {
       <View style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <Text style={styles.title}>Profile</Text>
-            <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle} activeOpacity={0.75}>
-              <Text style={styles.themeToggleEmoji}>{isDark ? '☀️' : '🌙'}</Text>
-            </TouchableOpacity>
+            <Text style={styles.title}>{t('profile.title')}</Text>
+            <View style={styles.headerRowRight}>
+              <TouchableOpacity onPress={() => switchLang(currentLang === 'en' ? 'hi' : 'en')} style={styles.langToggle} activeOpacity={0.75}>
+                <Text style={styles.langToggleText}>{currentLang === 'hi' ? 'EN' : 'HI'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle} activeOpacity={0.75}>
+                <Text style={styles.themeToggleEmoji}>{isDark ? '☀️' : '🌙'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.signedOutCard}>
             <Text style={styles.signedOutEmoji}>👤</Text>
-            <Text style={styles.signedOutTitle}>You're not signed in</Text>
+            <Text style={styles.signedOutTitle}>{t('profile.signedOutTitle')}</Text>
             <Text style={styles.signedOutSub}>
-              Sign in to save your progress, earn coins, and compete on the leaderboard.
+              {t('profile.signedOutSub')}
             </Text>
             <View style={styles.signedOutBtns}>
               <TouchableOpacity
                 style={[styles.authBtn, styles.authPrimary]}
                 onPress={() => router.push('/(auth)/login')}
               >
-                <Text style={styles.authBtnText}>Sign In</Text>
+                <Text style={styles.authBtnText}>{t('common.signIn')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.authBtn, styles.authSecondary]}
                 onPress={() => router.push('/(auth)/register')}
               >
-                <Text style={[styles.authBtnText, { color: COLORS.accent_light }]}>Register</Text>
+                <Text style={[styles.authBtnText, { color: COLORS.accent_light }]}>{t('common.register')}</Text>
               </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.version}>SSC CGL App v1.0.0</Text>
+          <Text style={styles.version}>{t('profile.version')}</Text>
           <View style={{ height: 32 }} />
         </ScrollView>
+
+        {/* Language Modal */}
+        <LanguageModal visible={langModal} current={currentLang} onSelect={switchLang} onClose={() => setLangModal(false)} />
       </View>
     );
   }
@@ -91,13 +110,16 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.title}>{t('profile.title')}</Text>
           <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => switchLang(currentLang === 'en' ? 'hi' : 'en')} style={styles.langToggle} activeOpacity={0.75}>
+              <Text style={styles.langToggleText}>{currentLang === 'hi' ? 'EN' : 'HI'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle} activeOpacity={0.75}>
               <Text style={styles.themeToggleEmoji}>{isDark ? '☀️' : '🌙'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleLogout}>
-              <Text style={styles.logoutLink}>Sign out</Text>
+              <Text style={styles.logoutLink}>{t('profile.signOut')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -123,10 +145,10 @@ export default function ProfileScreen() {
         {/* Stats */}
         <View style={styles.statsRow}>
           {[
-            { n: stats?.totalTests ?? 0, l: 'Tests' },
-            { n: stats?.streak ?? 0,     l: 'Streak' },
-            { n: `${stats?.bestScore ?? 0}%`, l: 'Best' },
-            { n: stats?.xp ?? 0,         l: 'XP' },
+            { n: stats?.totalTests ?? 0, l: t('profile.tests') },
+            { n: stats?.streak ?? 0,     l: t('profile.streak') },
+            { n: `${stats?.bestScore ?? 0}%`, l: t('profile.best') },
+            { n: stats?.xp ?? 0,         l: t('profile.xp') },
           ].map((s, i) => (
             <View key={i} style={styles.statCard}>
               <Text style={styles.statNum}>{s.n}</Text>
@@ -142,7 +164,7 @@ export default function ProfileScreen() {
               key={i}
               style={[styles.menuRow, item.accent && styles.menuRowAccent]}
               activeOpacity={0.75}
-              onPress={() => router.push(item.route as any)}
+              onPress={() => item.onPress ? item.onPress() : router.push(item.route as any)}
             >
               <Text style={styles.menuIcon}>{item.icon}</Text>
               <View style={styles.menuInfo}>
@@ -156,10 +178,47 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <Text style={styles.version}>SSC CGL App v1.0.0</Text>
+        <Text style={styles.version}>{t('profile.version')}</Text>
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Language Modal */}
+      <LanguageModal visible={langModal} current={currentLang} onSelect={switchLang} onClose={() => setLangModal(false)} />
     </View>
+  );
+}
+
+function LanguageModal({ visible, current, onSelect, onClose }: {
+  visible: boolean;
+  current: string;
+  onSelect: (lang: 'en' | 'hi') => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={langStyles.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={langStyles.sheet}>
+          <Text style={langStyles.title}>{t('language.title')}</Text>
+          <Text style={langStyles.sub}>{t('language.selectLanguage')}</Text>
+          {([
+            { code: 'en', label: t('language.english') },
+            { code: 'hi', label: t('language.hindi') },
+          ] as const).map((lang) => (
+            <TouchableOpacity
+              key={lang.code}
+              style={[langStyles.option, current === lang.code && langStyles.optionActive]}
+              onPress={() => onSelect(lang.code)}
+            >
+              <Text style={[langStyles.optionText, current === lang.code && langStyles.optionTextActive]}>
+                {lang.label}
+              </Text>
+              {current === lang.code && <Text style={langStyles.check}>✓</Text>}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -170,6 +229,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
   },
   title: { fontSize: 26, fontWeight: '800', color: COLORS.text_primary },
+  headerRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   logoutLink: { fontSize: 13, fontWeight: '700', color: COLORS.q_not_answered, paddingVertical: 8 },
   headerRight: {
     flexDirection: 'row',
@@ -188,6 +252,22 @@ const styles = StyleSheet.create({
   },
   themeToggleEmoji: {
     fontSize: 16,
+  },
+  langToggle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: COLORS.bg_card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  langToggleText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.accent_light,
+    letterSpacing: 0.5,
   },
 
   // Signed-out card
@@ -259,4 +339,44 @@ const styles = StyleSheet.create({
   menuArrow: { fontSize: 20, color: COLORS.text_muted },
 
   version: { textAlign: 'center', fontSize: 11, color: COLORS.text_muted, marginTop: 24 },
+});
+
+const langStyles = StyleSheet.create({
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: COLORS.bg_primary,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 24, paddingBottom: 40,
+  },
+  title: {
+    fontSize: 18, fontWeight: '800', color: COLORS.text_primary,
+    marginBottom: 4,
+  },
+  sub: {
+    fontSize: 13, color: COLORS.text_secondary,
+    marginBottom: 20,
+  },
+  option: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderRadius: 12, marginBottom: 8,
+    backgroundColor: COLORS.bg_card,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  optionActive: {
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accent + '15',
+  },
+  optionText: {
+    fontSize: 15, fontWeight: '600', color: COLORS.text_primary,
+  },
+  optionTextActive: {
+    color: COLORS.accent_light, fontWeight: '800',
+  },
+  check: {
+    fontSize: 16, color: COLORS.accent_light, fontWeight: '800',
+  },
 });

@@ -9,6 +9,7 @@ import {
   ActivityIndicator, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import {
   fetchWeeklyDigest, fetchRecentArticles, isoWeek,
@@ -17,6 +18,7 @@ import {
 
 export default function WeeklyQuizEntry() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [articles, setArticles] = useState<CurrentAffairsArticle[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,31 +50,27 @@ export default function WeeklyQuizEntry() {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Back</Text>
+          <Text style={styles.back}>{t('currentAffairs.back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.heading}>📝 Weekly Quiz</Text>
+        <Text style={styles.heading}>{t('currentAffairs.weeklyQuiz')}</Text>
         <View style={{ width: 50 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View style={styles.introBox}>
           <Text style={styles.introEmoji}>📰</Text>
-          <Text style={styles.introTitle}>Current Affairs Weekly Quiz</Text>
-          <Text style={styles.introSub}>
-            Test yourself on this week's top stories. 10 questions drawn from the current-affairs question pool.
-          </Text>
+          <Text style={styles.introTitle}>{t('currentAffairs.quizTitle')}</Text>
+          <Text style={styles.introSub}>{t('currentAffairs.quizSub')}</Text>
         </View>
 
         {articles.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={styles.emptyTxt}>No articles in this week's digest yet.</Text>
+            <Text style={styles.emptyTxt}>{t('currentAffairs.noArticlesDigest')}</Text>
           </View>
         ) : (
           <View style={styles.articlesCard}>
-            <Text style={styles.articlesHeader}>
-              This week · {articles.length} article{articles.length === 1 ? '' : 's'}
-            </Text>
+            <Text style={styles.articlesHeader}>{t('currentAffairs.thisWeekArticles', { count: articles.length })}</Text>
             {articles.slice(0, 5).map((a) => (
               <View key={a.id} style={styles.articleRow}>
                 <Text style={styles.articleDot}>•</Text>
@@ -80,7 +78,7 @@ export default function WeeklyQuizEntry() {
               </View>
             ))}
             {articles.length > 5 ? (
-              <Text style={styles.moreTxt}>+{articles.length - 5} more</Text>
+              <Text style={styles.moreTxt}>{t('currentAffairs.more', { count: articles.length - 5 })}</Text>
             ) : null}
           </View>
         )}
@@ -94,7 +92,7 @@ export default function WeeklyQuizEntry() {
             } as any);
           }}
         >
-          <Text style={styles.startBtnTxt}>🚀 Start Weekly Quiz</Text>
+          <Text style={styles.startBtnTxt}>{t('currentAffairs.startQuiz')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

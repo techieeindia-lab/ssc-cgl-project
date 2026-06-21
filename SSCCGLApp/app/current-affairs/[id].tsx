@@ -9,12 +9,14 @@ import {
   ActivityIndicator, StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { fetchArticle, CurrentAffairsArticle } from '../../src/services/currentAffairsService';
 
 export default function CurrentAffairsDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const [article, setArticle] = useState<CurrentAffairsArticle | null | undefined>(undefined);
 
   useEffect(() => {
@@ -36,9 +38,9 @@ export default function CurrentAffairsDetail() {
     return (
       <View style={styles.center}>
         <Text style={styles.emptyEmoji}>📭</Text>
-        <Text style={styles.emptyTxt}>Article not found.</Text>
+        <Text style={styles.emptyTxt}>{t('currentAffairs.articleNotFound')}</Text>
         <TouchableOpacity style={styles.btn} onPress={() => router.back()}>
-          <Text style={styles.btnTxt}>Go Back</Text>
+          <Text style={styles.btnTxt}>{t('currentAffairs.goBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -53,14 +55,14 @@ export default function CurrentAffairsDetail() {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg_primary} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.back}>← Back</Text>
+          <Text style={styles.back}>{t('currentAffairs.back')}</Text>
         </TouchableOpacity>
         <Text style={styles.headerLabel}>{article.weekKey.replace('W', 'Week ')}</Text>
         <View style={{ width: 50 }} />
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        {article.important ? <Text style={styles.importantBadge}>⭐ Featured</Text> : null}
+        {article.important ? <Text style={styles.importantBadge}>{t('currentAffairs.featured')}</Text> : null}
         <Text style={styles.title}>{article.title}</Text>
         <Text style={styles.meta}>
           {[article.source, dateStr].filter(Boolean).join(' · ')}
@@ -87,7 +89,7 @@ export default function CurrentAffairsDetail() {
             style={styles.quizCta}
             onPress={() => router.push(`/exam/${article.quizId}` as any)}
           >
-            <Text style={styles.quizCtaTxt}>📝 Take this article's quiz</Text>
+            <Text style={styles.quizCtaTxt}>{t('currentAffairs.takeQuiz')}</Text>
           </TouchableOpacity>
         ) : null}
       </ScrollView>

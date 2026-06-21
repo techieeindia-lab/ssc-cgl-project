@@ -5,6 +5,7 @@ import {
   TouchableOpacity, StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 const SC = {
   headerBg:  '#1B3A6B',
@@ -34,6 +35,7 @@ const PART_LABELS: Record<string, string> = {
 export default function ResultScreen() {
   const { result } = useLocalSearchParams<{ result: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
 
   let data: any = null;
   try {
@@ -45,9 +47,9 @@ export default function ResultScreen() {
   if (!data) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorTxt}>Result not found.</Text>
+        <Text style={styles.errorTxt}>{t('result.notFound')}</Text>
         <TouchableOpacity style={styles.homeBtn} onPress={() => router.replace('/(tabs)')}>
-          <Text style={styles.homeBtnTxt}>Go Home</Text>
+          <Text style={styles.homeBtnTxt}>{t('common.goHome')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -55,41 +57,38 @@ export default function ResultScreen() {
 
   const percentage = ((data.score / data.maxScore) * 100).toFixed(1);
   const grade =
-    Number(percentage) >= 80 ? { label: 'Excellent 🏆', color: '#006400' } :
-    Number(percentage) >= 60 ? { label: 'Good 👍',      color: '#1565C0' } :
-    Number(percentage) >= 40 ? { label: 'Average 📚',   color: '#CC6600' } :
-                               { label: 'Need Practice 💪', color: '#CC0000' };
+    Number(percentage) >= 80 ? { label: t('result.excellent'), color: '#006400' } :
+    Number(percentage) >= 60 ? { label: t('result.good'),      color: '#1565C0' } :
+    Number(percentage) >= 40 ? { label: t('result.average'),   color: '#CC6600' } :
+                               { label: t('result.needPractice'), color: '#CC0000' };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={SC.headerBg} />
 
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Test Result</Text>
-        <Text style={styles.headerSub}>SSC CGL Mock Test</Text>
+        <Text style={styles.headerTitle}>{t('result.testResult')}</Text>
+        <Text style={styles.headerSub}>{t('result.mockTest')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
 
-        {/* Score Card */}
         <View style={styles.scoreCard}>
-          <Text style={styles.scoreLabel}>Your Score</Text>
+          <Text style={styles.scoreLabel}>{t('result.yourScore')}</Text>
           <Text style={styles.scoreVal}>{data.score.toFixed(1)}</Text>
-          <Text style={styles.scoreMax}>out of {data.maxScore}</Text>
+          <Text style={styles.scoreMax}>{t('result.outOf', { max: data.maxScore })}</Text>
           <View style={[styles.gradeBadge, { backgroundColor: grade.color }]}>
             <Text style={styles.gradeText}>{grade.label}</Text>
           </View>
           <Text style={styles.percentTxt}>{percentage}%</Text>
         </View>
 
-        {/* Summary Row */}
         <View style={styles.summaryRow}>
           {[
-            { label: 'Correct',   val: data.correct,  color: SC.answered },
-            { label: 'Wrong',     val: data.wrong,    color: SC.notAnswered },
-            { label: 'Skipped',   val: data.skipped,  color: '#888' },
-            { label: 'Total',     val: data.total,    color: SC.btnBlue },
+            { label: t('result.correct'),   val: data.correct,  color: SC.answered },
+            { label: t('result.wrong'),     val: data.wrong,    color: SC.notAnswered },
+            { label: t('result.skipped'),   val: data.skipped,  color: '#888' },
+            { label: t('result.total'),     val: data.total,    color: SC.btnBlue },
           ].map((item) => (
             <View key={item.label} style={styles.summaryCard}>
               <Text style={[styles.summaryVal, { color: item.color }]}>{item.val}</Text>
@@ -98,8 +97,7 @@ export default function ResultScreen() {
           ))}
         </View>
 
-        {/* Section-wise Breakdown */}
-        <Text style={styles.sectionTitle}>Section-wise Breakdown</Text>
+        <Text style={styles.sectionTitle}>{t('result.sectionBreakdown')}</Text>
         {Object.entries(data.sectionStats || {}).map(([sec, stats]: any) => (
           <View key={sec} style={styles.secCard}>
             <View style={styles.secCardHeader}>
@@ -112,22 +110,21 @@ export default function ResultScreen() {
             <View style={styles.secCardRow}>
               <View style={styles.secStat}>
                 <Text style={[styles.secStatVal, { color: SC.answered }]}>{stats.correct}</Text>
-                <Text style={styles.secStatLbl}>Correct</Text>
+                <Text style={styles.secStatLbl}>{t('result.correct')}</Text>
               </View>
               <View style={styles.secStat}>
                 <Text style={[styles.secStatVal, { color: SC.notAnswered }]}>{stats.wrong}</Text>
-                <Text style={styles.secStatLbl}>Wrong</Text>
+                <Text style={styles.secStatLbl}>{t('result.wrong')}</Text>
               </View>
               <View style={styles.secStat}>
                 <Text style={[styles.secStatVal, { color: '#888' }]}>{stats.skipped}</Text>
-                <Text style={styles.secStatLbl}>Skipped</Text>
+                <Text style={styles.secStatLbl}>{t('result.skipped')}</Text>
               </View>
               <View style={styles.secStat}>
                 <Text style={[styles.secStatVal, { color: SC.btnBlue }]}>{stats.total}</Text>
-                <Text style={styles.secStatLbl}>Total</Text>
+                <Text style={styles.secStatLbl}>{t('result.total')}</Text>
               </View>
             </View>
-            {/* Progress bar */}
             <View style={styles.progBar}>
               <View style={[styles.progFill, {
                 width: `${Math.max(0, (stats.score / 50) * 100)}%`,
@@ -137,46 +134,44 @@ export default function ResultScreen() {
           </View>
         ))}
 
-        {/* Reward Card */}
         {data.reward && (
           <View style={styles.rewardCard}>
-            <Text style={styles.rewardTitle}>🎁 Rewards Earned</Text>
+            <Text style={styles.rewardTitle}>{t('result.rewardsEarned')}</Text>
             <View style={styles.rewardRow}>
               <View style={styles.rewardItem}>
                 <Text style={styles.rewardValue}>🪙 +{data.reward.coinsEarned}</Text>
-                <Text style={styles.rewardLbl}>Coins</Text>
+                <Text style={styles.rewardLbl}>{t('result.coins')}</Text>
               </View>
               <View style={styles.rewardItem}>
                 <Text style={styles.rewardValue}>⭐ +{data.reward.xpEarned}</Text>
-                <Text style={styles.rewardLbl}>XP</Text>
+                <Text style={styles.rewardLbl}>{t('result.xp')}</Text>
               </View>
             </View>
             {data.reward.isNewBest && (
               <View style={styles.newBestBadge}>
-                <Text style={styles.newBestTxt}>🏆 New Personal Best!</Text>
+                <Text style={styles.newBestTxt}>{t('result.newPersonalBest')}</Text>
               </View>
             )}
             {data.reward.newLevel && (
               <View style={styles.levelUpBadge}>
-                <Text style={styles.levelUpTxt}>🎉 Level Up! You're now Level {data.reward.newLevel}</Text>
+                <Text style={styles.levelUpTxt}>{t('result.levelUp', { level: data.reward.newLevel })}</Text>
               </View>
             )}
           </View>
         )}
 
-        {/* Buttons */}
         <View style={styles.btnRow}>
           <TouchableOpacity
             style={styles.retakeBtn}
             onPress={() => router.replace(`/exam/${data.testType || 'full'}`)}
           >
-            <Text style={styles.retakeBtnTxt}>🔄 Retake Test</Text>
+            <Text style={styles.retakeBtnTxt}>{t('result.retakeTest')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.homeBtn2}
             onPress={() => router.replace('/(tabs)')}
           >
-            <Text style={styles.homeBtnTxt2}>🏠 Go Home</Text>
+            <Text style={styles.homeBtnTxt2}>{t('result.goHome')}</Text>
           </TouchableOpacity>
         </View>
 
