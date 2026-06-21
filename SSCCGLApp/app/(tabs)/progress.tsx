@@ -191,7 +191,7 @@ export default function ProgressScreen() {
         <View style={styles.recentHeader}>
           <Text style={styles.sectionTitle}>Recent Tests</Text>
           {recent.length > 0 && (
-            <TouchableOpacity onPress={() => router.push('/profile/history')}>
+            <TouchableOpacity onPress={() => router.push('/profile/history' as any)}>
               <Text style={styles.seeAll}>See All ›</Text>
             </TouchableOpacity>
           )}
