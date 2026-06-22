@@ -9,15 +9,16 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
 import { Question } from '../../src/services/questionService';
 import { useAuth } from '../../src/context/AuthContext';
 import { awardQuizCoins, getUserStats } from '../../src/services/coinService';
-import { getRevisionQuestions, markResolved } from '../../src/services/mistakeService';
+import { getRevisionQuestions, getMistakesByTag, markResolved } from '../../src/services/mistakeService';
 
 export default function RevisionQuizScreen() {
   const router = useRouter();
+  const { tag } = useLocalSearchParams<{ tag?: string }>();
   const { user } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [idx, setIdx] = useState(0);
@@ -35,7 +36,9 @@ export default function RevisionQuizScreen() {
     (async () => {
       try {
         if (user) {
-          const qs = await getRevisionQuestions(user.uid, 10);
+          const qs = tag
+            ? await getMistakesByTag(user.uid, tag, 10)
+            : await getRevisionQuestions(user.uid, 10);
           setQuestions(qs);
         } else {
           setQuestions([]);
@@ -43,7 +46,7 @@ export default function RevisionQuizScreen() {
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
-  }, []);
+  }, [user, tag]);
 
   const handleAnswer = async (i: number) => {
     if (selected !== null) return;

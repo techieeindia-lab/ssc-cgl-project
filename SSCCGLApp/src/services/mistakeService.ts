@@ -140,6 +140,44 @@ export const getRevisionQuestions = async (
   }
 };
 
+/**
+ * Return unresolved mistakes filtered by topic tag.
+ */
+export const getMistakesByTag = async (
+  uid: string,
+  tag: string,
+  max = 20,
+): Promise<Question[]> => {
+  try {
+    const ref = collection(db, 'users', uid, 'mistakes');
+    const q = query(
+      ref,
+      where('resolved', '==', false),
+      where('topicTag', '==', tag),
+      orderBy('lastSeen', 'desc'),
+      limit(max),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => {
+      const data = d.data() as MistakeDoc;
+      return {
+        id: data.questionId,
+        text: data.snapshot.text,
+        options: data.snapshot.options,
+        correct: data.snapshot.correct,
+        section: data.snapshot.section,
+        year: null,
+        explanation: data.snapshot.explanation,
+        difficulty: 'medium' as const,
+        tags: data.snapshot.topicTag ? [data.snapshot.topicTag] : [],
+      };
+    });
+  } catch (e) {
+    console.error('getMistakesByTag failed', e);
+    return [];
+  }
+};
+
 /** Quick count of unresolved mistakes for the Progress badge. */
 export const getMistakesCount = async (uid: string): Promise<number> => {
   try {

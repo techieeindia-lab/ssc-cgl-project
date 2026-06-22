@@ -7,9 +7,9 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   ScrollView, Animated,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS } from '../../src/theme/colors';
-import { getMixQuizQuestions, Question } from '../../src/services/questionService';
+import { getMixQuizQuestions, getTopicQuizQuestions, Question } from '../../src/services/questionService';
 import { useAuth } from '../../src/context/AuthContext';
 import { awardQuizCoins } from '../../src/services/coinService';
 
@@ -18,6 +18,7 @@ const TOTAL_SECONDS = 10 * 60; // 10 minutes
 
 export default function SpeedQuizScreen() {
   const router = useRouter();
+  const { tag, section } = useLocalSearchParams<{ tag?: string; section?: string }>();
   const { user } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [idx, setIdx] = useState(0);
@@ -32,14 +33,16 @@ export default function SpeedQuizScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const qs = await getMixQuizQuestions(TOTAL_QS);
+        const qs = tag && section
+          ? await getTopicQuizQuestions(section as any, tag, TOTAL_QS)
+          : await getMixQuizQuestions(TOTAL_QS);
         setQuestions(qs);
       } catch (e) {
         console.error(e);
       }
       setLoading(false);
     })();
-  }, []);
+  }, [tag, section]);
 
   // Countdown
   useEffect(() => {

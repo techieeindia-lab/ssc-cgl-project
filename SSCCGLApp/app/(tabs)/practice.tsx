@@ -1,16 +1,28 @@
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
-import { SECTIONS } from '../../src/constants/examConfig';
 import { useTheme } from '../../src/context/ThemeContext';
+
+const SUBJECT_CARDS = [
+  {
+    id: 'quant' as const,
+    icon: '🔢',
+    color: '#E74C3C',
+    nameKey: 'practice.subjectCards.quant' as const,
+    subKey: 'practice.subjectCards.quantSub' as const,
+  },
+  {
+    id: 'reasoning' as const,
+    icon: '🧠',
+    color: '#9B59B6',
+    nameKey: 'practice.subjectCards.reasoning' as const,
+    subKey: 'practice.subjectCards.reasoningSub' as const,
+  },
+];
 
 export default function PracticeScreen() {
   const router = useRouter();
@@ -67,6 +79,25 @@ export default function PracticeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Subject Cards — Quant & Reasoning */}
+        <Text style={styles.sectionLabel}>{t('practice.practiceBySection')}</Text>
+        <View style={styles.subjectCardsRow}>
+          {SUBJECT_CARDS.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              style={[styles.subjectCard, { borderColor: s.color }]}
+              activeOpacity={0.8}
+              onPress={() => router.push({ pathname: `/practice/${s.id}` } as any)}
+            >
+              <View style={[styles.subjectIconWrap, { backgroundColor: s.color + '22' }]}>
+                <Text style={styles.subjectIcon}>{s.icon}</Text>
+              </View>
+              <Text style={styles.subjectName}>{t(s.nameKey)}</Text>
+              <Text style={styles.subjectSub} numberOfLines={2}>{t(s.subKey)}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <Text style={styles.sectionLabel}>{t('practice.practiceModes')}</Text>
         {PRACTICE_MODES.map((mode, i) => (
           <TouchableOpacity
@@ -88,26 +119,6 @@ export default function PracticeScreen() {
               </View>
             )}
             <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
-        ))}
-
-        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>{t('practice.practiceBySection')}</Text>
-        {SECTIONS.map((s) => (
-          <TouchableOpacity
-            key={s.id}
-            style={styles.sectionRow}
-            activeOpacity={0.75}
-            onPress={() => router.push({ pathname: '/quiz', params: { section: s.id } })}
-          >
-            <Text style={styles.secEmoji}>{s.icon}</Text>
-            <View style={styles.secInfo}>
-              <Text style={styles.secName}>{s.name}</Text>
-              <Text style={styles.secSub}>25 {t('practice.topics')} · 500+ {t('practice.questions')}</Text>
-            </View>
-            <View style={styles.secBar}>
-              <View style={[styles.secBarFill, { width: '0%', backgroundColor: s.color }]} />
-            </View>
-            <Text style={[styles.secPct, { color: s.color }]}>0%</Text>
           </TouchableOpacity>
         ))}
 
@@ -141,6 +152,20 @@ const styles = StyleSheet.create({
     fontSize: 14, fontWeight: '700', color: COLORS.text_primary,
     paddingHorizontal: 20, marginBottom: 10,
   },
+  subjectCardsRow: {
+    flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 24,
+  },
+  subjectCard: {
+    flex: 1, backgroundColor: COLORS.bg_card, borderRadius: 14, padding: 16,
+    borderWidth: 1.5, borderLeftWidth: 4, gap: 8,
+  },
+  subjectIconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  subjectIcon: { fontSize: 20 },
+  subjectName: { fontSize: 13, fontWeight: '800', color: COLORS.text_primary },
+  subjectSub: { fontSize: 11, color: COLORS.text_secondary, lineHeight: 15 },
   modeRow: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingVertical: 14,
@@ -154,19 +179,4 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   badgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   arrow: { fontSize: 20, color: COLORS.text_muted },
-  sectionRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border, gap: 12,
-  },
-  secEmoji: { fontSize: 22 },
-  secInfo: { flex: 1 },
-  secName: { fontSize: 13, fontWeight: '600', color: COLORS.text_primary },
-  secSub: { fontSize: 11, color: COLORS.text_secondary, marginTop: 2 },
-  secBar: {
-    width: 50, height: 4, backgroundColor: COLORS.border,
-    borderRadius: 2, overflow: 'hidden',
-  },
-  secBarFill: { height: '100%', borderRadius: 2 },
-  secPct: { fontSize: 11, fontWeight: '700', minWidth: 30, textAlign: 'right' },
 });

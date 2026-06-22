@@ -5,14 +5,25 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../theme/colors';
 import { useTheme } from '../../context/ThemeContext';
 import { SECTIONS } from '../../constants/examConfig';
 import { getUserStats, getLevelFromXP, UserStats } from '../../services/coinService';
+import { computeSectionMastery, SectionMastery } from '../../services/analyticsService';
+import { getMistakesCount } from '../../services/mistakeService';
+import { getTestHistory } from '../../services/testService';
+import { fetchRecentArticles } from '../../services/currentAffairsService';
 import { useAuth } from '../../context/AuthContext';
 
 const { width } = Dimensions.get('window');
+
+type RecentTest = {
+  id: string;
+  score: number;
+  maxScore: number;
+  testType: string;
+  createdAt?: { seconds: number } | null;
+};
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -20,16 +31,33 @@ export default function HomeScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [mastery, setMastery] = useState<SectionMastery[] | null>(null);
+  const [mistakesCount, setMistakesCount] = useState(0);
+  const [lastTest, setLastTest] = useState<RecentTest | null>(null);
+  const [caTitle, setCaTitle] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      if (user) {
-        getUserStats(user.uid).then(setStats).catch(console.error);
-      }
+      if (!user) return;
+      Promise.all([
+        getUserStats(user.uid),
+        computeSectionMastery(user.uid),
+        getMistakesCount(user.uid),
+        getTestHistory(user.uid, 1),
+        fetchRecentArticles(1),
+      ]).then(([s, m, mc, h, ca]) => {
+        setStats(s);
+        setMastery(m.bySection);
+        setMistakesCount(mc);
+        setLastTest(h.length > 0 ? h[0] as RecentTest : null);
+        setCaTitle(ca.length > 0 ? ca[0].title : null);
+      }).catch(console.error);
     }, [user]),
   );
 
   const levelInfo = getLevelFromXP(stats?.xp ?? 0);
+  const today = new Date().toISOString().split('T')[0];
+  const quizDone = stats?.lastQuizDate === today;
 
   const greetingKey = () => {
     const h = new Date().getHours();
@@ -38,17 +66,84 @@ export default function HomeScreen() {
     return 'home.greetingEvening';
   };
 
+  const missions = [
+    {
+      done: quizDone,
+      label: quizDone ? t('home.missionDailyQuizDone') : t('home.missionDailyQuiz'),
+      onPress: () => router.push({ pathname: '/quiz/play', params: { type: 'mix', count: '10' } }),
+    },
+    {
+      done: mistakesCount === 0,
+      label: mistakesCount === 0 ? t('home.missionReviseDone') : t('home.missionRevise'),
+      onPress: () => router.push('/quiz/revision'),
+    },
+    {
+      done: (stats?.totalTests ?? 0) > 0,
+      label: (stats?.totalTests ?? 0) > 0 ? t('home.missionMockTestDone') : t('home.missionMockTest'),
+      onPress: () => router.push('/(tabs)/test'),
+    },
+    {
+      done: caTitle !== null,
+      label: caTitle !== null ? t('home.missionCADone') : t('home.missionCA'),
+      onPress: () => router.push('/current-affairs'),
+    },
+  ];
+  const allDone = missions.every((m) => m.done);
+
+  const sectionToTile = (s: typeof SECTIONS[0]) => {
+    const m = mastery?.find((x) => x.section === s.id);
+    const pct = m && m.attempted > 0 ? m.accuracy : null;
+
+    // TODO: Replace with real routes when app/practice/[subject].tsx exists
+    // and app/study/index.tsx supports initial tab param.
+    const route = (): string => {
+      if (s.id === 'QA') return '/quiz';           // TODO → /practice/quant
+      if (s.id === 'GIR') return '/quiz';           // TODO → /practice/reasoning
+      if (s.id === 'GA') return '/study';           // TODO → /study?tab=gk
+      return '/study';                               // TODO → /study?tab=english
+    };
+
+    return (
+      <TouchableOpacity
+        key={s.id}
+        style={[styles.masteryTile, { borderLeftColor: s.color }]}
+        onPress={() => router.push(route() as any)}
+        activeOpacity={0.75}
+      >
+        <Text style={styles.masteryIcon}>{s.icon}</Text>
+        <Text style={styles.masteryShort}>{s.shortName}</Text>
+        <Text style={[styles.masteryPct, { color: s.color }]}>
+          {pct === null ? '—' : `${pct}%`}
+        </Text>
+        <View style={styles.masteryBar}>
+          <View style={[styles.masteryBarFill, { backgroundColor: s.color, width: pct === null ? '0%' : `${pct}%` }]} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const continueLabel = () => {
+    if (!lastTest) return null;
+    const date = lastTest.createdAt?.seconds
+      ? new Date(lastTest.createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+      : '';
+    return t('home.continueLastTest', {
+      type: lastTest.testType === 'full' ? 'Full Mock' : lastTest.testType,
+      date,
+    });
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={COLORS.bg_primary} />
       <ScrollView showsVerticalScrollIndicator={false}>
 
+        {/* 1. HEADER */}
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>{t(greetingKey())}</Text>
             <Text style={styles.appName}>{t('common.appName')}</Text>
             <Text style={styles.appSub}>{t('common.appSub')}</Text>
-            <Text style={styles.tagline}>{t('home.tagline')}</Text>
           </View>
           <TouchableOpacity style={styles.streakBadge} onPress={() => router.push('/(tabs)/profile')}>
             <Text style={styles.streakFire}>🔥</Text>
@@ -57,6 +152,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* XP / COINS BAR */}
         <View style={styles.xpCard}>
           <View style={styles.xpLeft}>
             <View style={styles.levelBadge}>
@@ -83,193 +179,93 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <View style={styles.patternCard}>
-          <View style={styles.patternHeader}>
-            <Text style={styles.patternTitle}>{t('home.patternTitle')}</Text>
-            <View style={styles.liveBadge}>
-              <Text style={styles.liveText}>{t('home.patternLive')}</Text>
-            </View>
-          </View>
-          <View style={styles.patternStats}>
-            {[
-              { num: '100', label: t('home.questions') },
-              { num: '60',  label: t('home.minutes') },
-              { num: '200', label: t('home.maxMarks') },
-              { num: '-0.5',label: t('home.negMark') },
-            ].map((s, i, arr) => (
-              <React.Fragment key={s.label}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{s.num}</Text>
-                  <Text style={styles.statLabel}>{s.label}</Text>
-                </View>
-                {i < arr.length - 1 && <View style={styles.statDivider} />}
-              </React.Fragment>
-            ))}
-          </View>
+        {/* 2. TODAY'S MISSION */}
+        <Text style={styles.sectionTitle}>{t('home.todaysMission')}</Text>
+        <View style={styles.missionCard}>
+          {missions.map((m, i) => (
+            <TouchableOpacity
+              key={i}
+              style={styles.missionRow}
+              onPress={m.onPress}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.missionCheck, m.done && styles.missionCheckDone]}>
+                {m.done && <Text style={styles.missionCheckIcon}>✓</Text>}
+              </View>
+              <Text style={[styles.missionLabel, m.done && styles.missionLabelDone]}>
+                {m.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {allDone && (
+            <Text style={styles.missionBonus}>{t('home.missionEmpty')}</Text>
+          )}
         </View>
 
-        <Text style={styles.sectionTitle}>{t('home.examSections')}</Text>
-        <View style={styles.sectionsGrid}>
-          {SECTIONS.map((section) => (
-            <View key={section.id} style={[styles.sectionCard, { borderLeftColor: section.color }]}>
-              <Text style={styles.sectionIcon}>{section.icon}</Text>
-              <Text style={styles.sectionShort}>{section.shortName}</Text>
-              <Text style={styles.sectionName} numberOfLines={2}>{section.name}</Text>
-              <View style={styles.sectionMeta}>
-                <Text style={styles.sectionMetaText}>25 {t('home.qs')}</Text>
-                <Text style={[styles.sectionMetaText, { color: section.color }]}>15 {t('home.min')}</Text>
-              </View>
-            </View>
+        {/* 3. SECTION MASTERY */}
+        <Text style={styles.sectionTitle}>{t('home.masteryTitle')}</Text>
+        <View style={styles.masteryRow}>
+          {SECTIONS.map(sectionToTile)}
+        </View>
+
+        {/* 4. CONTINUE CARD */}
+        <Text style={styles.sectionTitle}>{t('home.continueTitle')}</Text>
+        <TouchableOpacity
+          style={styles.continueCard}
+          onPress={() => lastTest ? router.push('/(tabs)/test') : router.push('/(tabs)/test')}
+          activeOpacity={0.8}
+        >
+          {lastTest ? (
+            <>
+              <Text style={styles.continueLabel}>{continueLabel()}</Text>
+              <Text style={styles.continueCta}>{t('home.continueStartTest')}</Text>
+            </>
+          ) : (
+            <Text style={styles.continueEmpty}>{t('home.continueEmpty')}</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* 5. JUMP IN */}
+        <Text style={styles.sectionTitle}>{t('home.jumpIn')}</Text>
+        <View style={styles.jumpRow}>
+          {[
+            { icon: '⚡', label: t('home.jumpPractice'), route: '/(tabs)/practice' },
+            { icon: '📝', label: t('home.jumpTest'), route: '/(tabs)/test' },
+            { icon: '📚', label: t('home.jumpTopics'), route: '/study' },
+            { icon: '📰', label: t('home.jumpCA'), route: '/current-affairs' },
+          ].map((item, i) => (
+            <TouchableOpacity
+              key={i}
+              style={styles.jumpTile}
+              onPress={() => router.push(item.route as any)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.jumpIcon}>{item.icon}</Text>
+              <Text style={styles.jumpLabel}>{item.label}</Text>
+            </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.quizHeader}>
-          <Text style={styles.sectionTitle}>{t('home.quickQuiz')}</Text>
-          <TouchableOpacity onPress={() => router.push('/quiz')}>
-            <Text style={styles.seeAll}>{t('common.seeAll')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.quizCards}>
-          <TouchableOpacity
-            style={[styles.quizCard, { borderTopColor: COLORS.accent }]}
-            onPress={() => router.push({ pathname: '/quiz/play', params: { type: 'mix', count: '10' } })}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.quizCardIcon}>🎲</Text>
-            <Text style={styles.quizCardTitle}>{t('home.mixQuiz')}</Text>
-            <Text style={styles.quizCardSub}>{t('home.mixQuizSub')}</Text>
-            <View style={styles.quizCardReward}>
-              <Text style={styles.quizCardRewardText}>+100 🪙</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.quizCard, { borderTopColor: '#9B59B6' }]}
-            onPress={() => router.push('/quiz')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.quizCardIcon}>📚</Text>
-            <Text style={styles.quizCardTitle}>{t('home.subjectQuiz')}</Text>
-            <Text style={styles.quizCardSub}>{t('home.subjectQuizSub')}</Text>
-            <View style={styles.quizCardReward}>
-              <Text style={styles.quizCardRewardText}>+50 🪙</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.quizCard, { borderTopColor: '#27AE60' }]}
-            onPress={() => router.push('/quiz')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.quizCardIcon}>🎯</Text>
-            <Text style={styles.quizCardTitle}>{t('home.topicQuiz')}</Text>
-            <Text style={styles.quizCardSub}>{t('home.topicQuizSub')}</Text>
-            <View style={styles.quizCardReward}>
-              <Text style={styles.quizCardRewardText}>+50 🪙</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionTitle}>{t('home.quickPractice')}</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickCard} onPress={() => router.push('/(tabs)/test')}>
-            <Text style={styles.quickIcon}>📄</Text>
-            <Text style={styles.quickLabel}>{t('home.mockTest')}</Text>
-            <Text style={styles.quickSub}>{t('home.mockTestSub')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickCard} onPress={() => router.push('/(tabs)/test')}>
-            <Text style={styles.quickIcon}>📚</Text>
-            <Text style={styles.quickLabel}>{t('home.prevYear')}</Text>
-            <Text style={styles.quickSub}>{t('home.prevYearSub')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.quickCard}
-            onPress={() => router.push({ pathname: '/quiz/play', params: { type: 'mix', count: '10' } })}
-          >
-            <Text style={styles.quickIcon}>⚡</Text>
-            <Text style={styles.quickLabel}>{t('home.dailyQuiz')}</Text>
-            <Text style={styles.quickSub}>{t('home.dailyQuizSub')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionTitle}>{t('home.smartTools')}</Text>
-        <View style={styles.toolsRow}>
-          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools/calculator')}>
-            <Text style={styles.toolIcon}>🧮</Text>
-            <Text style={styles.toolLbl}>{t('home.calculator')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools/periodic-table')}>
-            <Text style={styles.toolIcon}>⚛️</Text>
-            <Text style={styles.toolLbl}>{t('home.periodicTable')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools/speed-math')}>
-            <Text style={styles.toolIcon}>⏱️</Text>
-            <Text style={styles.toolLbl}>{t('home.speedMath')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.toolCard} onPress={() => router.push('/tools')}>
-            <Text style={styles.toolIcon}>🛠️</Text>
-            <Text style={styles.toolLbl}>{t('home.allTools')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionTitle}>{t('home.exploreMore')}</Text>
-
+        {/* 6. CURRENT AFFAIRS PREVIEW */}
         <TouchableOpacity
-          activeOpacity={0.88}
-          style={styles.featuredWrap}
-          onPress={() => router.push('/study')}
-        >
-          <LinearGradient
-            colors={['#2E86DE', '#9B59B6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.featuredCard}
-          >
-            <View style={styles.featuredIconsRow}>
-              <Text style={styles.featuredIconSmall}>🃏</Text>
-              <Text style={styles.featuredIconSmall}>📖</Text>
-              <Text style={styles.featuredIconSmall}>🧠</Text>
-              <Text style={styles.featuredIconSmall}>⚡</Text>
-            </View>
-            <Text style={styles.featuredTitle}>{t('home.topicMastery')}</Text>
-            <Text style={styles.featuredSub}>{t('home.topicMasterySub')}</Text>
-            <View style={styles.featuredCta}>
-              <Text style={styles.featuredCtaText}>{t('home.exploreStudyHub')}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.88}
-          style={styles.featuredWrap}
+          style={styles.caCard}
           onPress={() => router.push('/current-affairs')}
-        >
-          <LinearGradient
-            colors={['#F39C12', '#E74C3C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.featuredCard}
-          >
-            <Text style={styles.featuredIcon}>📰</Text>
-            <Text style={styles.featuredTitle}>{t('home.currentAffairs')}</Text>
-            <Text style={styles.featuredSub}>{t('home.currentAffairsSub')}</Text>
-            <View style={styles.featuredCta}>
-              <Text style={styles.featuredCtaText}>{t('home.readThisWeek')}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.startButton}
           activeOpacity={0.85}
-          onPress={() => router.push('/(tabs)/test')}
         >
-          <Text style={styles.startButtonText}>{t('home.startFullMock')}</Text>
-          <Text style={styles.startButtonSub}>{t('home.startFullMockSub')}</Text>
+          <View style={styles.caHeader}>
+            <Text style={styles.caTitle}>📰 {t('home.jumpCA')}</Text>
+            <Text style={styles.caArrow}>{t('home.caReadMore')}</Text>
+          </View>
+          {caTitle ? (
+            <Text style={styles.caPreview} numberOfLines={2}>
+              {t('home.caPreview', { title: caTitle })}
+            </Text>
+          ) : (
+            <Text style={styles.caEmpty}>{t('home.caEmpty')}</Text>
+          )}
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
@@ -279,12 +275,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg_primary },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 20,
+    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
   },
   greeting: { fontSize: 13, color: COLORS.text_secondary, marginBottom: 4 },
   appName: { fontSize: 28, fontWeight: '900', color: COLORS.text_primary },
   appSub: { fontSize: 14, fontWeight: '300', color: COLORS.accent_light, letterSpacing: 3, marginTop: -2 },
-  tagline: { fontSize: 11, color: COLORS.accent_light, marginTop: 4 },
   streakBadge: {
     backgroundColor: COLORS.bg_card, borderRadius: 12, padding: 12,
     alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, minWidth: 64,
@@ -311,98 +306,80 @@ const styles = StyleSheet.create({
   xpBarFill: { height: 6, backgroundColor: COLORS.accent, borderRadius: 6 },
   xpBarLabel: { fontSize: 10, color: COLORS.text_muted, marginTop: 4, textAlign: 'right' },
 
-  patternCard: {
-    marginHorizontal: 20, backgroundColor: COLORS.bg_card, borderRadius: 16,
-    padding: 16, borderWidth: 1, borderColor: COLORS.accent_dark, marginBottom: 24,
-  },
-  patternHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16,
-  },
-  patternTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text_primary },
-  liveBadge: { backgroundColor: '#E74C3C', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  liveText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1 },
-  patternStats: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statItem: { alignItems: 'center', flex: 1 },
-  statNumber: { fontSize: 20, fontWeight: '800', color: COLORS.accent_light },
-  statLabel: { fontSize: 10, color: COLORS.text_secondary, marginTop: 2 },
-  statDivider: { width: 1, height: 32, backgroundColor: COLORS.border },
-
   sectionTitle: {
-    fontSize: 16, fontWeight: '700', color: COLORS.text_primary,
-    paddingHorizontal: 20, marginBottom: 12,
+    fontSize: 15, fontWeight: '800', color: COLORS.text_primary,
+    paddingHorizontal: 20, marginBottom: 10,
   },
-  sectionsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, marginBottom: 24, gap: 8,
-  },
-  sectionCard: {
-    backgroundColor: COLORS.bg_card, borderRadius: 12, padding: 14,
-    width: (width - 40) / 2, borderLeftWidth: 4, borderWidth: 1, borderColor: COLORS.border,
-  },
-  sectionIcon: { fontSize: 22, marginBottom: 6 },
-  sectionShort: { fontSize: 11, fontWeight: '800', color: COLORS.accent_light, letterSpacing: 1, marginBottom: 4 },
-  sectionName: { fontSize: 12, color: COLORS.text_secondary, lineHeight: 17, marginBottom: 10 },
-  sectionMeta: { flexDirection: 'row', justifyContent: 'space-between' },
-  sectionMetaText: { fontSize: 11, color: COLORS.text_muted, fontWeight: '600' },
 
-  quizHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingRight: 20, marginBottom: 12,
+  // Today's Mission
+  missionCard: {
+    marginHorizontal: 20, marginBottom: 20,
+    backgroundColor: COLORS.bg_card, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  seeAll: { fontSize: 13, color: COLORS.accent_light, fontWeight: '600' },
-  quizCards: { flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 24 },
-  quizCard: {
-    flex: 1, backgroundColor: COLORS.bg_card, borderRadius: 14, padding: 14,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, borderTopWidth: 3,
+  missionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 8,
   },
-  quizCardIcon: { fontSize: 26, marginBottom: 8 },
-  quizCardTitle: { fontSize: 12, fontWeight: '800', color: COLORS.text_primary, textAlign: 'center' },
-  quizCardSub: { fontSize: 10, color: COLORS.text_secondary, marginTop: 3, textAlign: 'center' },
-  quizCardReward: {
-    marginTop: 8, backgroundColor: '#F39C1222', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+  missionCheck: {
+    width: 22, height: 22, borderRadius: 11,
+    borderWidth: 2, borderColor: COLORS.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  quizCardRewardText: { fontSize: 10, color: '#F39C12', fontWeight: '700' },
+  missionCheckDone: {
+    backgroundColor: '#27AE60', borderColor: '#27AE60',
+  },
+  missionCheckIcon: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  missionLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text_primary, flex: 1 },
+  missionLabelDone: { color: COLORS.text_muted, textDecorationLine: 'line-through' },
+  missionBonus: { fontSize: 11, color: COLORS.accent_light, textAlign: 'center', marginTop: 6, fontWeight: '700' },
 
-  quickActions: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 24 },
-  quickCard: {
-    flex: 1, backgroundColor: COLORS.bg_card, borderRadius: 12, padding: 14,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border,
+  // Section Mastery Tiles
+  masteryRow: {
+    flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 20,
   },
-  quickIcon: { fontSize: 22, marginBottom: 6 },
-  quickLabel: { fontSize: 11, fontWeight: '700', color: COLORS.text_primary, textAlign: 'center' },
-  quickSub: { fontSize: 10, color: COLORS.text_secondary, marginTop: 3 },
+  masteryTile: {
+    flex: 1, backgroundColor: COLORS.bg_card, borderRadius: 12, padding: 10,
+    borderWidth: 1, borderColor: COLORS.border, borderLeftWidth: 4, gap: 4,
+  },
+  masteryIcon: { fontSize: 18 },
+  masteryShort: { fontSize: 9, fontWeight: '800', color: COLORS.accent_light, letterSpacing: 0.5 },
+  masteryPct: { fontSize: 16, fontWeight: '900' },
+  masteryBar: { height: 3, backgroundColor: COLORS.bg_secondary, borderRadius: 2, overflow: 'hidden' },
+  masteryBarFill: { height: '100%', borderRadius: 2 },
 
-  // Smart Tools
-  toolsRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 24 },
-  toolCard: {
+  // Continue Card
+  continueCard: {
+    marginHorizontal: 20, marginBottom: 20,
+    backgroundColor: COLORS.bg_card, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  continueLabel: { fontSize: 13, color: COLORS.text_secondary, marginBottom: 6 },
+  continueCta: { fontSize: 14, fontWeight: '800', color: COLORS.accent_light },
+  continueEmpty: { fontSize: 13, color: COLORS.text_muted },
+
+  // Jump In
+  jumpRow: {
+    flexDirection: 'row', paddingHorizontal: 12, gap: 8, marginBottom: 20,
+  },
+  jumpTile: {
     flex: 1, backgroundColor: COLORS.bg_card, borderRadius: 12, padding: 12,
-    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border,
+    alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, gap: 6,
   },
-  toolIcon: { fontSize: 22, marginBottom: 6 },
-  toolLbl: { fontSize: 10, fontWeight: '700', color: COLORS.text_primary, textAlign: 'center' },
+  jumpIcon: { fontSize: 22 },
+  jumpLabel: { fontSize: 10, fontWeight: '700', color: COLORS.text_primary, textAlign: 'center' },
 
-  // Featured notecards (Topic Mastery / Current Affairs)
-  featuredWrap: {
-    marginHorizontal: 20, marginBottom: 14, borderRadius: 18,
-    overflow: 'hidden',
+  // Current Affairs Preview
+  caCard: {
+    marginHorizontal: 20, marginBottom: 20,
+    backgroundColor: COLORS.bg_card, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  featuredCard: { padding: 20 },
-  featuredIconsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  featuredIconSmall: { fontSize: 22 },
-  featuredIcon: { fontSize: 30, marginBottom: 8 },
-  featuredTitle: { fontSize: 18, fontWeight: '900', color: '#fff', marginBottom: 6 },
-  featuredSub: {
-    fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 17, marginBottom: 16,
+  caHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
   },
-  featuredCta: {
-    alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
-  },
-  featuredCtaText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-
-  startButton: {
-    marginHorizontal: 20, backgroundColor: COLORS.accent, borderRadius: 16,
-    paddingVertical: 18, alignItems: 'center',
-  },
-  startButtonText: { fontSize: 17, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
-  startButtonSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  caTitle: { fontSize: 14, fontWeight: '800', color: COLORS.text_primary },
+  caArrow: { fontSize: 12, fontWeight: '700', color: COLORS.accent_light },
+  caPreview: { fontSize: 13, color: COLORS.text_secondary, lineHeight: 18 },
+  caEmpty: { fontSize: 13, color: COLORS.text_muted },
 });

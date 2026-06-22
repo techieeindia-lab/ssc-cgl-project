@@ -1,22 +1,59 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '../../src/theme/colors';
 import { EXAM_CONFIG, SECTIONS } from '../../src/constants/examConfig';
 import { useTheme } from '../../src/context/ThemeContext';
+import { useAuth } from '../../src/context/AuthContext';
+import { getTestHistory } from '../../src/services/testService';
+
+type Attempt = {
+  id: string;
+  score: number;
+  correct: number;
+  wrong: number;
+  total: number;
+  maxScore: number;
+  testType: string;
+  sectionStats?: Record<string, any>;
+  answers?: Record<string, number | null>;
+  questionIds?: string[];
+  createdAt?: { seconds: number } | null;
+};
+
+const TEST_TYPE_LABELS: Record<string, string> = {
+  full: 'Full Mock',
+  pyst: 'PYST',
+  sectional: 'Sectional',
+  pyq: 'Prev Year',
+};
+
+const relativeDate = (createdAt: { seconds: number } | null | undefined): string => {
+  if (!createdAt?.seconds) return '';
+  const diff = Date.now() - createdAt.seconds * 1000;
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  return new Date(createdAt.seconds * 1000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+};
 
 export default function TestScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      getTestHistory(user.uid, 5).then((data) => setAttempts(data as Attempt[])).catch(console.error);
+    }, [user]),
+  );
 
   const TEST_OPTIONS = [
     {
@@ -65,6 +102,7 @@ export default function TestScreen() {
           <Text style={styles.sub}>{t('test.sub')}</Text>
         </View>
 
+        {/* Exam Stats Banner */}
         <View style={styles.banner}>
           <View style={styles.bannerRow}>
             {[
@@ -84,6 +122,21 @@ export default function TestScreen() {
           </View>
         </View>
 
+        {/* Weekly Live Test Banner (static placeholder) */}
+        <View style={styles.liveBanner}>
+          <View style={styles.liveBannerLeft}>
+            <View style={styles.liveTag}>
+              <Text style={styles.liveTagText}>{t('test.liveTestBanner.tag')}</Text>
+            </View>
+            <Text style={styles.liveTitle}>{t('test.liveTestBanner.title')}</Text>
+            <Text style={styles.liveSub}>{t('test.liveTestBanner.sub')}</Text>
+          </View>
+          <TouchableOpacity style={styles.liveBtn} activeOpacity={0.8}>
+            <Text style={styles.liveBtnText}>{t('test.liveTestBanner.cta')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 4 Test Type Cards */}
         <View style={styles.optionsGrid}>
           {TEST_OPTIONS.map((opt) => (
             <TouchableOpacity
@@ -92,7 +145,6 @@ export default function TestScreen() {
               activeOpacity={0.75}
               onPress={() => {
                 if (opt.id === 'full_mock') {
-                  // The dynamic [id] route resolves id='full' as the 100-Q mock.
                   router.push({ pathname: '/exam/[id]', params: { id: 'full' } });
                 } else if (opt.id === 'pyst') {
                   router.push('/exam/pyst');
@@ -115,6 +167,7 @@ export default function TestScreen() {
           ))}
         </View>
 
+        {/* Quick Sectional Start */}
         <Text style={styles.sectionLabel}>{t('test.quickSectional')}</Text>
         <View style={styles.sectionRow}>
           {SECTIONS.map((s) => (
@@ -132,6 +185,7 @@ export default function TestScreen() {
           ))}
         </View>
 
+        {/* Quick Games */}
         <Text style={styles.sectionLabel}>{t('test.quickGames')}</Text>
         <View style={styles.sectionRow}>
           <TouchableOpacity
@@ -149,6 +203,53 @@ export default function TestScreen() {
             <Text style={[styles.sectionChipText, { color: '#E74C3C' }]}>{t('test.revision')}</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Past Attempts */}
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>{t('test.pastAttempts')}</Text>
+        {!user ? (
+          <Text style={styles.pastEmpty}>{t('test.pastAttemptSignedOut')}</Text>
+        ) : attempts.length === 0 ? (
+          <Text style={styles.pastEmpty}>{t('test.pastAttemptEmpty')}</Text>
+        ) : (
+          attempts.map((a) => {
+            const label = TEST_TYPE_LABELS[a.testType] || a.testType;
+            return (
+              <TouchableOpacity
+                key={a.id}
+                style={styles.pastRow}
+                activeOpacity={0.75}
+                onPress={() =>
+                  router.push({
+                    pathname: '/exam/result',
+                    params: {
+                      result: JSON.stringify({
+                        id: a.id,
+                        score: a.score,
+                        maxScore: a.maxScore,
+                        correct: a.correct,
+                        wrong: a.wrong,
+                        skipped: a.total - a.correct - a.wrong,
+                        total: a.total,
+                        testType: a.testType,
+                        sectionStats: a.sectionStats ?? {},
+                      }),
+                    },
+                  })
+                }
+              >
+                <View style={styles.pastLeft}>
+                  <Text style={styles.pastType}>{label}</Text>
+                  <Text style={styles.pastDate}>{relativeDate(a.createdAt)}</Text>
+                </View>
+                <View style={styles.pastRight}>
+                  <Text style={styles.pastScore}>
+                    {a.score?.toFixed(0) ?? '—'}/{a.maxScore}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -201,6 +302,41 @@ const styles = StyleSheet.create({
   optTagText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   optTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text_primary, marginBottom: 4 },
   optSub: { fontSize: 11, color: COLORS.text_secondary },
+  liveBanner: {
+    marginHorizontal: 20, marginBottom: 20,
+    backgroundColor: '#2E86DE22', borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: '#2E86DE44',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  liveBannerLeft: { flex: 1, gap: 4 },
+  liveTag: {
+    alignSelf: 'flex-start', backgroundColor: '#E74C3C',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5,
+  },
+  liveTagText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  liveTitle: { fontSize: 15, fontWeight: '800', color: COLORS.text_primary },
+  liveSub: { fontSize: 11, color: COLORS.text_secondary },
+  liveBtn: {
+    backgroundColor: '#2E86DE', paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 10,
+  },
+  liveBtnText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  pastEmpty: {
+    fontSize: 13, color: COLORS.text_muted, paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  pastRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  pastLeft: { gap: 2 },
+  pastType: { fontSize: 13, fontWeight: '700', color: COLORS.text_primary },
+  pastDate: { fontSize: 11, color: COLORS.text_secondary },
+  pastRight: {},
+  pastScore: { fontSize: 16, fontWeight: '800', color: COLORS.accent_light },
+
   sectionLabel: {
     fontSize: 14,
     fontWeight: '700',
